@@ -1,4 +1,6 @@
-package org.compute4j;
+package org.compute4j.computing;
+
+import org.compute4j.device.ComputeBuffer;
 
 import java.util.ArrayList;
 import java.util.List;

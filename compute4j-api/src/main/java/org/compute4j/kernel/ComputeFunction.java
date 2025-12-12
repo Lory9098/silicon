@@ -1,4 +1,4 @@
-package org.compute4j;
+package org.compute4j.kernel;
 
 public interface ComputeFunction {
 }

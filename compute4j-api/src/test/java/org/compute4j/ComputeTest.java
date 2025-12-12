@@ -1,5 +1,14 @@
 package org.compute4j;
 
+import org.compute4j.computing.ComputeQueue;
+import org.compute4j.computing.ComputeSize;
+import org.compute4j.device.ComputeBuffer;
+import org.compute4j.device.ComputeContext;
+import org.compute4j.device.ComputeDevice;
+import org.compute4j.computing.ComputeArgs;
+import org.compute4j.kernel.ComputeFunction;
+import org.compute4j.kernel.ComputeModule;
+
 import java.nio.file.Path;
 
 public class ComputeTest {
@@ -14,17 +23,17 @@ public class ComputeTest {
         float[] dataA = new float[1024];
         float[] dataB = new float[1024];
 
-        ComputeBuffer a = device.allocateArray(dataA, dataA.length * 4L);
-        ComputeBuffer b = device.allocateArray(dataB, dataB.length * 4L);
+        ComputeBuffer a = device.allocateArray(dataA);
+        ComputeBuffer b = device.allocateArray(dataB);
         ComputeBuffer c = device.allocateBytes(dataA.length * 4L);
 
         ComputeQueue queue = context.createQueue();
         ComputeArgs args = ComputeArgs.of(a, b, c);
 
-        ComputeSize grid = new ComputeSize(1024, 1, 1);
-        ComputeSize block = new ComputeSize(128, 1, 1);
+        ComputeSize globalSize = new ComputeSize(1024, 1, 1);
+        ComputeSize groupSize = new ComputeSize(128, 1, 1);
 
-        queue.dispatch(function, grid, block, args);
+        queue.dispatch(function, globalSize, groupSize, args);
         queue.awaitCompletion();
     }
 }

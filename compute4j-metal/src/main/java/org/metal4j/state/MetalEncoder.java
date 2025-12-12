@@ -30,8 +30,8 @@ public record MetalEncoder(MemorySegment handle) implements MetalObject, AutoClo
         METAL_ENCODER_SET_BUFFER.invokeExact(handle, buf.handle(), index);
     }
 
-    public void dispatchThreads(int gridX, int gridY, int gridZ, int blockX, int blockY, int blockZ) throws Throwable {
-        METAL_DISPATCH.invokeExact(handle, gridX, gridY, gridZ, blockX, blockY, blockZ);
+    public void dispatchThreads(int globalX, int globalY, int globalZ, int groupX, int groupY, int groupZ) throws Throwable {
+        METAL_DISPATCH.invokeExact(handle, globalX, globalY, globalZ, groupX, groupY, groupZ);
     }
 
     public void endEncoding() throws Throwable {

@@ -1,5 +1,7 @@
 package org.compute4j;
 
+import org.compute4j.device.ComputeDevice;
+
 public class Compute4J {
 
     private static ComputeBackend backend;

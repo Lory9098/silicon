@@ -1,4 +1,4 @@
-package org.compute4j;
+package org.compute4j.computing;
 
 public interface ComputeStream {
 }

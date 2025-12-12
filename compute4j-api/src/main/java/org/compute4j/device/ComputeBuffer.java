@@ -1,4 +1,4 @@
-package org.compute4j;
+package org.compute4j.device;
 
 public interface ComputeBuffer {
 }
