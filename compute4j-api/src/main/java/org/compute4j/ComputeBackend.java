@@ -4,6 +4,6 @@ import org.compute4j.device.ComputeDevice;
 
 public interface ComputeBackend {
     boolean isAvailable();
-    String getName();
+    BackendType getType();
     ComputeDevice createSystemDevice(int index);
 }

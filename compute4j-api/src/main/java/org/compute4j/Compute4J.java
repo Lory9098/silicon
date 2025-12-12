@@ -8,26 +8,25 @@ public class Compute4J {
 
     private static ComputeBackend backend;
     
-    static {
-        Compute4J.backend = loadBackend();
-    }
-    
-    public static void chooseBackend(String backendName) {
+    public static void chooseBackend(BackendType backendType) {
+        if (backendType == null) {
+            throw new NullPointerException("Chosen backend type cannot be null!");
+        }
+        
         ServiceLoader<ComputeBackend> loader = ServiceLoader.load(ComputeBackend.class);
         
         for (ComputeBackend backend : loader) {
-            if (!backend.getName().equals(backendName)) continue;
+            if (!backend.getType().equals(backend.getType())) continue;
             
             Compute4J.backend = backend;
             return;
         }
         
-        throw new IllegalStateException("No backend with name '" + backendName + "' was found on this system!");
+        throw new IllegalStateException("No backend with name '" + backendType.getName() + "' was found on this system!");
     }
     
     private static ComputeBackend loadBackend() {
         ServiceLoader<ComputeBackend> loader = ServiceLoader.load(ComputeBackend.class);
-        
         ComputeBackend best = null;
         
         for (ComputeBackend backend : loader) {
@@ -51,7 +50,7 @@ public class Compute4J {
     }
     
     private static boolean isBetter(ComputeBackend candidate, ComputeBackend current) {
-        return priority(candidate.getName()) < priority(current.getName());
+        return candidate.getType().getPriority() < current.getType().getPriority();
     }
 
     public static ComputeDevice createSystemDevice() {
@@ -63,15 +62,9 @@ public class Compute4J {
     }
 
     public static ComputeBackend getBackend() {
+        if (backend == null) {
+            backend = loadBackend();
+        }
         return backend;
-    }
-    
-    private static int priority(String name) {
-        return switch (name) {
-            case "CUDA" -> 0;
-            case "Metal" -> 1;
-            case "OpenCL" -> 2;
-            default -> 99;
-        };
     }
 }

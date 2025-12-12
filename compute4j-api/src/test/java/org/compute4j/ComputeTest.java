@@ -14,6 +14,8 @@ import java.nio.file.Path;
 public class ComputeTest {
 
     public static void main(String[] _args) {
+        Compute4J.chooseBackend(BackendType.OPENCL); // force the backend
+        
         ComputeDevice device = Compute4J.createSystemDevice();
         ComputeContext context = device.createContext();
 
