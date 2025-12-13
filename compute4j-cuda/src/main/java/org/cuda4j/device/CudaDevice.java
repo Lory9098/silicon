@@ -98,7 +98,7 @@ public record CudaDevice(MemorySegment handle, int index) implements CudaObject,
             throw new OutOfMemoryError("cuMemAlloc failed: " + ptr);
         }
         
-        return new CudaBuffer(ptr, size);
+        return new CudaBuffer(this, ptr, size);
     }
     
     @Override

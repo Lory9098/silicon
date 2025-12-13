@@ -73,56 +73,6 @@ public class CUDA implements ComputeBackend {
         CUDA_INIT.invokeExact();
     }
     
-    public static CudaBuffer allocateBytes(long size) throws Throwable {
-        MemorySegment ptr = (MemorySegment) CUDA_MEM_ALLOC.invoke(size);
-        
-        if (ptr == null || ptr.address() == 0) {
-            throw new OutOfMemoryError("cuMemAlloc failed: " + ptr);
-        }
-        
-        return new CudaBuffer(ptr, size);
-    }
-    
-    public static CudaBuffer allocateFor(float[] data, long size, CudaStream stream) throws Throwable {
-        CudaBuffer buffer = allocateBytes(size);
-        buffer.copyToDeviceAsync(data, stream);
-        return buffer;
-    }
-    
-    public static CudaBuffer allocateFor(float[] data, long size) throws Throwable {
-        CudaBuffer buffer = allocateBytes(size);
-        buffer.copyToDevice(data);
-        return buffer;
-    }
-    
-    public static CudaBuffer allocateFor(float[] data, CudaStream stream) throws Throwable {
-        return allocateFor(data, (long) data.length * Float.SIZE, stream);
-    }
-    
-    public static CudaBuffer allocateFor(float[] data) throws Throwable {
-        return allocateFor(data, (long) data.length * Float.SIZE);
-    }
-    
-    public static CudaBuffer allocateFor(int[] data, long size, CudaStream stream) throws Throwable {
-        CudaBuffer buffer = allocateBytes(size);
-        buffer.copyToDeviceAsync(data, stream);
-        return buffer;
-    }
-    
-    public static CudaBuffer allocateFor(int[] data, long size) throws Throwable {
-        CudaBuffer buffer = allocateBytes(size);
-        buffer.copyToDevice(data);
-        return buffer;
-    }
-    
-    public static CudaBuffer allocateFor(int[] data, CudaStream stream) throws Throwable {
-        return allocateFor(data, (long) data.length * Integer.SIZE, stream);
-    }
-    
-    public static CudaBuffer allocateFor(int[] data) throws Throwable {
-        return allocateFor(data, (long) data.length * Integer.SIZE);
-    }
-    
     public static SymbolLookup loadFromResources(String resourceName) {
         try (InputStream in = CUDA.class.getResourceAsStream(resourceName)) {
             if (in == null) {

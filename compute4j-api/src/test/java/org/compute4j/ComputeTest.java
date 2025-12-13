@@ -36,6 +36,7 @@ public class ComputeTest {
         ComputeBuffer a = device.allocateArray(dataA);
         ComputeBuffer b = device.allocateArray(dataB);
         ComputeBuffer c = device.allocateBytes(N * 4L);
+        ComputeBuffer d = c.copy(); // creates a copy of this buffer on the GPU
         
         ComputeQueue queue = context.createQueue();
         ComputeArgs args = ComputeArgs.of(a, b, c, N);
@@ -47,8 +48,11 @@ public class ComputeTest {
         queue.awaitCompletion();
         
         float[] result = new float[10];
+        float[] dataD = new float[10];
         c.get(result);
+        d.get(dataD);
         
         System.out.println(Arrays.toString(result));
+        System.out.println(Arrays.toString(dataD));
     }
 }
