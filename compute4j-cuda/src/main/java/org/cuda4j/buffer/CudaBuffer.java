@@ -1,5 +1,6 @@
 package org.cuda4j.buffer;
 
+import org.compute4j.computing.ComputeQueue;
 import org.compute4j.device.ComputeBuffer;
 import org.cuda4j.CudaObject;
 import org.cuda4j.context.CudaStream;
@@ -10,9 +11,13 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Array;
+import java.util.Map;
 
 public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) implements CudaObject, ComputeBuffer {
-    
+
+    private record HostType(ValueLayout layout, long elementSize) {}
+
     public static final MethodHandle CUDA_BUFFER_PTR = LINKER.downcallHandle(
         LOOKUP.find("cuda_buffer_ptr").orElse(null),
         FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
@@ -58,23 +63,81 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
             ValueLayout.JAVA_LONG, // size
             ValueLayout.ADDRESS) // stream
     );
-    
+    public static final MethodHandle CUDA_MEMCPY_DTOD_ASYNC = LINKER.downcallHandle(
+        LOOKUP.find("cuda_memcpy_dtod_async").orElse(null),
+        FunctionDescriptor.of(ValueLayout.JAVA_INT,
+            ValueLayout.ADDRESS, // destination pointer
+            ValueLayout.ADDRESS, // source pointer
+            ValueLayout.JAVA_LONG, // size
+            ValueLayout.ADDRESS) // stream
+    );
+    private static final Map<Class<?>, HostType> HOST_TYPES = Map.of(
+        byte[].class,   new HostType(ValueLayout.JAVA_BYTE,   1),
+        short[].class,  new HostType(ValueLayout.JAVA_SHORT,  2),
+        int[].class,    new HostType(ValueLayout.JAVA_INT,    4),
+        long[].class,   new HostType(ValueLayout.JAVA_LONG,   8),
+        float[].class,  new HostType(ValueLayout.JAVA_FLOAT,  4),
+        double[].class, new HostType(ValueLayout.JAVA_DOUBLE, 8)
+    );
+
+
     @Override
     public CudaBuffer copy() throws Throwable {
         CudaBuffer buffer = device.allocateBytes(size);
-        
-        try (Arena _ = Arena.ofConfined()) {
-            int res = (int) CUDA_MEMCPY_DTOD.invoke(buffer.handle, handle, size);
-            if (res != 0) throw new RuntimeException("cuMemcpyDtoD failed: " + res);
-        }
-        
+        return copyInto(buffer);
+    }
+
+    @Override
+    public CudaBuffer copyInto(ComputeBuffer other) throws Throwable {
+        CudaBuffer buffer = (CudaBuffer) other;
+
+        int res = (int) CUDA_MEMCPY_DTOD.invoke(buffer.handle, handle, size);
+        if (res != 0) throw new RuntimeException("cuMemcpyDtoD failed: " + res);
+
         return buffer;
     }
-    
+
+    @Override
+    public CudaBuffer copyAsync(ComputeQueue queue) throws Throwable {
+        CudaBuffer buffer = device.allocateBytes(size);
+        return copyIntoAsync(buffer, queue);
+    }
+
+    @Override
+    public CudaBuffer copyIntoAsync(ComputeBuffer other, ComputeQueue queue) throws Throwable {
+        CudaBuffer buffer = (CudaBuffer) other;
+        CudaStream stream = (CudaStream) queue;
+
+        int res = (int) CUDA_MEMCPY_DTOD_ASYNC.invoke(buffer.handle, handle, size, stream.handle());
+        if (res != 0) throw new RuntimeException("cuMemcpyDtoD failed: " + res);
+
+        return buffer;
+    }
+
     @Override
     public void free() throws Throwable {
         int res = (int) CUDA_MEM_FREE.invoke(handle);
         if (res != 0) throw new RuntimeException("cuMemFree failed: " + res);
+    }
+
+    private void get(Object data) throws Throwable {
+        HostType type = HOST_TYPES.get(data.getClass());
+        if (type == null) {
+            throw new IllegalArgumentException("Unsupported array type: " + data.getClass());
+        }
+
+        int length = Array.getLength(data);
+        long size = length * type.elementSize();
+
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment host = arena.allocate(type.layout(), length);
+
+            int res = (int) CUDA_MEMCPY_DTOH.invoke(host, handle, size);
+            if (res != 0) throw new RuntimeException("cuMemcpyDtoH failed: " + res);
+
+            // TODO: finish this
+            // MemorySegment.copy(host, 0, MemorySegment.ofArray(data), 0, size);
+        }
     }
     
     @Override
@@ -82,14 +145,14 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment host = arena.allocate(ValueLayout.JAVA_BYTE, data.length);
-            
+
             int res = (int) CUDA_MEMCPY_DTOH.invoke(host, handle, size);
             if (res != 0) throw new RuntimeException("cuMemcpyDtoH failed: " + res);
-            
+
             MemorySegment.copy(host, 0, MemorySegment.ofArray(data), 0, size);
         }
     }
-    
+
     @Override
     public void get(double[] data) throws Throwable {
         long size = bytesOf(data);
@@ -102,7 +165,7 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
             MemorySegment.copy(host, 0, MemorySegment.ofArray(data), 0, size);
         }
     }
-    
+
     @Override
     public void get(float[] data) throws Throwable {
         long size = bytesOf(data);
@@ -115,7 +178,7 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
             MemorySegment.copy(host, 0, MemorySegment.ofArray(data), 0, size);
         }
     }
-    
+
     @Override
     public void get(long[] data) throws Throwable {
         long size = bytesOf(data);
@@ -128,7 +191,7 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
             MemorySegment.copy(host, 0, MemorySegment.ofArray(data), 0, size);
         }
     }
-    
+
     @Override
     public void get(int[] data) throws Throwable {
         long size = bytesOf(data);
@@ -141,7 +204,7 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
             MemorySegment.copy(host, 0, MemorySegment.ofArray(data), 0, size);
         }
     }
-    
+
     @Override
     public void get(short[] data) throws Throwable {
         long size = bytesOf(data);
@@ -154,7 +217,7 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
             MemorySegment.copy(host, 0, MemorySegment.ofArray(data), 0, size);
         }
     }
-    
+
     // ========================= COPY TO DEVICE =========================
     public void copyToDevice(byte[] data) throws Throwable {
         long size = bytesOf(data);

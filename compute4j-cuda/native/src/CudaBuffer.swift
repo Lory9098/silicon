@@ -94,3 +94,17 @@ public func cuda_memcpy_dtoh_async(
     let res: CUresult = cuMemcpyDtoHAsync_v2(hostPtr, buf.ptr, size, stream.stream)
     return Int32(res.rawValue)
 }
+
+@_cdecl("cuda_memcpy_dtod_async")
+public func cuda_memcpy_dtod_async(
+    dstPtr: UnsafeMutableRawPointer,
+    srcPtr: UnsafeMutableRawPointer,
+    size: Int,
+    streamPtr: UnsafeMutableRawPointer
+) -> Int32 {
+    let dst: CudaBufferWrapper = pointerToObject(dstPtr)
+    let src: CudaBufferWrapper = pointerToObject(srcPtr)
+    let stream: CudaStreamWrapper = pointerToObject(streamPtr)
+    let res: CUresult = cuMemcpyDtoDAsync_v2(dst.ptr, src.ptr, size, stream.stream)
+    return Int32(res.rawValue)
+}

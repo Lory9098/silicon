@@ -1,7 +1,12 @@
 package org.compute4j.device;
 
+import org.compute4j.computing.ComputeQueue;
+
 public interface ComputeBuffer extends Cloneable {
     ComputeBuffer copy() throws Throwable;
+    ComputeBuffer copyInto(ComputeBuffer other) throws Throwable;
+    ComputeBuffer copyAsync(ComputeQueue queue) throws Throwable;
+    ComputeBuffer copyIntoAsync(ComputeBuffer other, ComputeQueue queue) throws Throwable;
     void free() throws Throwable;
     void get(byte[] data) throws Throwable;
     void get(double[] data) throws Throwable;
