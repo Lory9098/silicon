@@ -1,8 +1,11 @@
-package org.silicon.cuda.context;
+package org.silicon.cuda.device;
 
+import org.silicon.computing.ComputeQueue;
+import org.silicon.cuda.computing.CudaStream;
+import org.silicon.cuda.kernel.CudaModule;
 import org.silicon.device.ComputeContext;
 import org.silicon.cuda.CudaObject;
-import org.silicon.cuda.device.CudaModule;
+import org.silicon.kernel.ComputeModule;
 
 import java.io.File;
 import java.lang.foreign.Arena;
@@ -10,9 +13,11 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
-public record CudaContext(MemorySegment handle) implements CudaObject, ComputeContext {
+
+public record CudaContext(MemorySegment handle, CudaDevice device) implements CudaObject, ComputeContext {
     
     public static final MethodHandle CUDA_DESTROY_CONTEXT = LINKER.downcallHandle(
         LOOKUP.find("cuda_destroy_context").orElse(null),
@@ -37,6 +42,10 @@ public record CudaContext(MemorySegment handle) implements CudaObject, ComputeCo
     public static final MethodHandle CUDA_MODULE_LOAD_DATA = LINKER.downcallHandle(
         LOOKUP.find("cuda_module_load_data").orElse(null),
         FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+    );
+    public static final MethodHandle CUDA_MEM_ALLOC = LINKER.downcallHandle(
+        LOOKUP.find("cuda_mem_alloc").orElse(null),
+        FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
     );
     
     public CudaContext setCurrent() throws Throwable {
@@ -103,13 +112,108 @@ public record CudaContext(MemorySegment handle) implements CudaObject, ComputeCo
     }
     
     @Override
-    public CudaModule loadModule(String source) {
-        throw new UnsupportedOperationException(); // TODO
+    public CudaModule loadModule(String source) throws Throwable {
+        return loadModule(source.getBytes(StandardCharsets.UTF_8));
     }
     
     @Override
     public void release() throws Throwable {
         CUDA_DESTROY_CONTEXT.invoke(handle);
         CudaObject.super.release();
+    }
+    
+    @Override
+    public CudaBuffer allocateBytes(long size) throws Throwable {
+        MemorySegment ptr = (MemorySegment) CUDA_MEM_ALLOC.invoke(size);
+        
+        if (ptr == null || ptr.address() == 0) {
+            throw new OutOfMemoryError("cuMemAlloc failed: " + ptr);
+        }
+        
+        return new CudaBuffer(this, ptr, size);
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(byte[] data, long size) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDevice(data);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(byte[] data, long size, ComputeQueue queue) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDeviceAsync(data, (CudaStream) queue);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(double[] data, long size) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDevice(data);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(double[] data, long size, ComputeQueue queue) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDeviceAsync(data, (CudaStream) queue);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(float[] data, long size) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDevice(data);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(float[] data, long size, ComputeQueue queue) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDeviceAsync(data, (CudaStream) queue);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(long[] data, long size) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDevice(data);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(long[] data, long size, ComputeQueue queue) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDeviceAsync(data, (CudaStream) queue);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(int[] data, long size) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDevice(data);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(int[] data, long size, ComputeQueue queue) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDeviceAsync(data, (CudaStream) queue);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(short[] data, long size) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDevice(data);
+        return buffer;
+    }
+    
+    @Override
+    public CudaBuffer allocateArray(short[] data, long size, ComputeQueue queue) throws Throwable {
+        CudaBuffer buffer = allocateBytes(size);
+        buffer.copyToDeviceAsync(data, (CudaStream) queue);
+        return buffer;
     }
 }

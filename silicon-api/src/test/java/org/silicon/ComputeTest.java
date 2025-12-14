@@ -15,14 +15,16 @@ import java.util.Arrays;
 public class ComputeTest {
 
     public static void main(String[] _args) throws Throwable {
-        int N = 512 * 512 * 512;
+        int N = 1024;
+        Silicon.chooseBackend(BackendType.OPENCL);
         
         System.out.println("Chosen backend " + Silicon.getBackend().getName());
         
         ComputeDevice device = Silicon.createSystemDevice();
         ComputeContext context = device.createContext();
-
-        ComputeModule moduleFromPath = context.loadModule(Path.of("resources/vector_add.ptx"));
+        
+//         ComputeModule moduleFromPath = context.loadModule(Path.of("resources/vector_add.ptx"));
+        ComputeModule moduleFromPath = context.loadModule(Path.of("resources/vector_add.cl"));
         ComputeFunction function = moduleFromPath.getFunction("vecAdd");
 
         float[] dataA = new float[N];
@@ -33,10 +35,9 @@ public class ComputeTest {
             dataB[i] = i + 1;
         }
 
-        ComputeBuffer a = device.allocateArray(dataA);
-        ComputeBuffer b = device.allocateArray(dataB);
-        ComputeBuffer c = device.allocateBytes(N * 4L);
-        ComputeBuffer d = c.copy(); // creates a copy of this buffer on the GPU
+        ComputeBuffer a = context.allocateArray(dataA);
+        ComputeBuffer b = context.allocateArray(dataB);
+        ComputeBuffer c = context.allocateBytes(N * 4L);
         
         ComputeQueue queue = context.createQueue();
         ComputeArgs args = ComputeArgs.of(a, b, c, N);
@@ -48,12 +49,7 @@ public class ComputeTest {
         queue.awaitCompletion();
         
         float[] result = new float[10];
-        float[] dataD = new float[10];
-        
         c.get(result);
-        d.get(dataD);
-        
         System.out.println(Arrays.toString(result));
-        System.out.println(Arrays.toString(dataD));
     }
 }

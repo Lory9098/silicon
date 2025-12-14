@@ -6,3 +6,7 @@ plugins {
 dependencies {
     implementation project(':silicon-api')
 }
+
+shadowJar {
+    archiveClassifier.set("")
+}

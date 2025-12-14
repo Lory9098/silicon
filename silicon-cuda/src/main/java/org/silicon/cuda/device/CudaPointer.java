@@ -1,4 +1,4 @@
-package org.silicon.cuda.buffer;
+package org.silicon.cuda.device;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;

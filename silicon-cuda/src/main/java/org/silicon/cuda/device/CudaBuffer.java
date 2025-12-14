@@ -1,20 +1,17 @@
-package org.silicon.cuda.buffer;
+package org.silicon.cuda.device;
 
 import org.silicon.computing.ComputeQueue;
 import org.silicon.device.ComputeBuffer;
 import org.silicon.cuda.CudaObject;
-import org.silicon.cuda.context.CudaStream;
-import org.silicon.cuda.device.CudaDevice;
+import org.silicon.cuda.computing.CudaStream;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Array;
-import java.util.Map;
 
-public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) implements CudaObject, ComputeBuffer {
+public record CudaBuffer(CudaContext context, MemorySegment handle, long size) implements CudaObject, ComputeBuffer {
 
     private record HostType(ValueLayout layout, long elementSize) {}
 
@@ -71,19 +68,10 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
             ValueLayout.JAVA_LONG, // size
             ValueLayout.ADDRESS) // stream
     );
-    private static final Map<Class<?>, HostType> HOST_TYPES = Map.of(
-        byte[].class,   new HostType(ValueLayout.JAVA_BYTE,   1),
-        short[].class,  new HostType(ValueLayout.JAVA_SHORT,  2),
-        int[].class,    new HostType(ValueLayout.JAVA_INT,    4),
-        long[].class,   new HostType(ValueLayout.JAVA_LONG,   8),
-        float[].class,  new HostType(ValueLayout.JAVA_FLOAT,  4),
-        double[].class, new HostType(ValueLayout.JAVA_DOUBLE, 8)
-    );
-
-
+    
     @Override
     public CudaBuffer copy() throws Throwable {
-        CudaBuffer buffer = device.allocateBytes(size);
+        CudaBuffer buffer = context.allocateBytes(size);
         return copyInto(buffer);
     }
 
@@ -99,7 +87,7 @@ public record CudaBuffer(CudaDevice device, MemorySegment handle, long size) imp
 
     @Override
     public CudaBuffer copyAsync(ComputeQueue queue) throws Throwable {
-        CudaBuffer buffer = device.allocateBytes(size);
+        CudaBuffer buffer = context.allocateBytes(size);
         return copyIntoAsync(buffer, queue);
     }
 

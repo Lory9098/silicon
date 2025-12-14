@@ -1,8 +1,12 @@
 plugins {
     id 'java'
-    alias libs.plugins.shadowJar
+}
+
+test {
+    failOnNoDiscoveredTests = false
 }
 
 dependencies {
-    runtimeOnly project(':silicon-cuda')
+    testRuntimeOnly project(':silicon-cuda')
+    testRuntimeOnly project(':silicon-opencl')
 }

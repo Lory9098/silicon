@@ -1,13 +1,14 @@
-package org.silicon.cuda.context;
+package org.silicon.cuda.computing;
 
 import org.silicon.computing.ComputeArgs;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.computing.ComputeSize;
+import org.silicon.cuda.kernel.CudaFunction;
 import org.silicon.device.ComputeBuffer;
 import org.silicon.kernel.ComputeFunction;
 import org.silicon.cuda.CudaObject;
-import org.silicon.cuda.buffer.CudaBuffer;
-import org.silicon.cuda.buffer.CudaPointer;
+import org.silicon.cuda.device.CudaBuffer;
+import org.silicon.cuda.device.CudaPointer;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -42,19 +43,13 @@ public record CudaStream(MemorySegment handle) implements CudaObject, ComputeQue
         )
     );
     
-    public void destroy() throws Throwable {
-        int res = (int) CUDA_STREAM_DESTROY.invoke(handle);
-
-        if (res != 0) {
-            throw new RuntimeException("cuStreamDestroy_v2 failed: " + res);
-        }
-    }
-    
     @Override
     public void dispatch(ComputeFunction function, ComputeSize globalSize, ComputeSize groupSize, ComputeArgs args) throws Throwable {
-        if (groupSize == null) {
-            groupSize = new ComputeSize(128, 1, 1); // TODO: better handling
+        if (!(function instanceof CudaFunction(MemorySegment funcHandle))) {
+            throw new IllegalArgumentException("Compute function is not an CUDA stream!");
         }
+        
+        if (groupSize == null) groupSize = new ComputeSize(128, 1, 1); // TODO: better handling
         
         int gridX = globalSize.x() / groupSize.x();
         int gridY = globalSize.y() / groupSize.y();
@@ -78,11 +73,10 @@ public record CudaStream(MemorySegment handle) implements CudaObject, ComputeQue
             }
         }
         
-        CudaFunction cudaFunc = (CudaFunction) function;
         CudaPointer parameters = CudaPointer.from(pointers);
         
         int result = (int) CUDA_LAUNCH_KERNEL.invoke(
-            cudaFunc.handle(),
+            funcHandle,
             gridX, gridY, gridZ,
             groupSize.x(), groupSize.y(), groupSize.z(),
             0,
@@ -98,10 +92,13 @@ public record CudaStream(MemorySegment handle) implements CudaObject, ComputeQue
     @Override
     public void awaitCompletion() throws Throwable {
         int res = (int) CUDA_STREAM_SYNC.invoke(handle);
-        
-        if (res != 0) {
-            throw new RuntimeException("cuStreamSynchronized failed: " + res);
-        }
+        if (res != 0) throw new RuntimeException("cuStreamSynchronized failed: " + res);
+    }
+    
+    @Override
+    public void release() throws Throwable {
+        int res = (int) CUDA_STREAM_DESTROY.invoke(handle);
+        if (res != 0) throw new RuntimeException("cuStreamDestroy failed: " + res);
     }
     
     @Override

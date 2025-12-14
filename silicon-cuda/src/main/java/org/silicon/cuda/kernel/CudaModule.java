@@ -1,8 +1,7 @@
-package org.silicon.cuda.device;
+package org.silicon.cuda.kernel;
 
 import org.silicon.kernel.ComputeModule;
 import org.silicon.cuda.CudaObject;
-import org.silicon.cuda.context.CudaFunction;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;

@@ -3,6 +3,25 @@ plugins {
     alias libs.plugins.shadowJar
 }
 
+project.ext.lwjglVersion = libs.versions.lwjglVersion.get()
+
+configurations {
+    lwjglNatives
+}
+
 dependencies {
     implementation project(':silicon-api')
+    implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
+
+    implementation "org.lwjgl:lwjgl"
+    implementation "org.lwjgl:lwjgl-opencl"
+
+    implementation "org.lwjgl:lwjgl::natives-windows"
+    implementation "org.lwjgl:lwjgl::natives-linux"
+    implementation "org.lwjgl:lwjgl::natives-macos-arm64"
+}
+
+shadowJar {
+    archiveClassifier.set("")
+    relocate "org.lwjgl", "org.silicon.shaded.lwjgl"
 }

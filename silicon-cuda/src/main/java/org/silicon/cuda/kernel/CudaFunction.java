@@ -1,4 +1,4 @@
-package org.silicon.cuda.context;
+package org.silicon.cuda.kernel;
 
 import org.silicon.kernel.ComputeFunction;
 import org.silicon.cuda.CudaObject;
