@@ -15,25 +15,37 @@ import java.nio.file.StandardCopyOption;
 public class CUDA implements ComputeBackend {
     
     public static final Linker LINKER = Linker.nativeLinker();
-    public static final SymbolLookup LOOKUP = loadFromResources("/libcuda4j.dll");
-    public static final MethodHandle CUDA_INIT = LINKER.downcallHandle(
-        LOOKUP.find("cuda_init").orElse(null),
-        FunctionDescriptor.ofVoid()
-    );
-    public static final MethodHandle CUDA_DEVICE_COUNT = LINKER.downcallHandle(
-        LOOKUP.find("cuda_device_count").orElse(null),
-        FunctionDescriptor.of(ValueLayout.JAVA_INT)
-    );
-    public static final MethodHandle CUDA_CREATE_SYSTEM_DEVICE = LINKER.downcallHandle(
-        LOOKUP.find("cuda_create_system_device").orElse(null),
-        FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
-    );
+    public static final SymbolLookup LOOKUP;
+    public static final MethodHandle CUDA_INIT;
+    public static final MethodHandle CUDA_DEVICE_COUNT;
+    public static final MethodHandle CUDA_CREATE_SYSTEM_DEVICE;
     
     static {
+        LOOKUP = loadFromResources("/libcuda4j.dll");
+
+        if (LOOKUP != null) {
+            CUDA_INIT = LINKER.downcallHandle(
+                LOOKUP.find("cuda_init").orElse(null),
+                FunctionDescriptor.ofVoid()
+            );
+            CUDA_DEVICE_COUNT = LINKER.downcallHandle(
+                LOOKUP.find("cuda_device_count").orElse(null),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT)
+            );
+            CUDA_CREATE_SYSTEM_DEVICE = LINKER.downcallHandle(
+                LOOKUP.find("cuda_create_system_device").orElse(null),
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
+            );
+        } else {
+            CUDA_INIT = null;
+            CUDA_DEVICE_COUNT = null;
+            CUDA_CREATE_SYSTEM_DEVICE = null;
+        }
+
         try {
             init();
-        } catch (Throwable e) {
-            throw new ExceptionInInitializerError(e);
+        } catch (Throwable ignored) {
+            // ignore
         }
     }
     
@@ -79,8 +91,8 @@ public class CUDA implements ComputeBackend {
             tempFile.toFile().deleteOnExit();
             
             return SymbolLookup.libraryLookup(tempFile.toString(), Arena.global());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            return null;
         }
     }
 }

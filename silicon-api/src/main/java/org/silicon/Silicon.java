@@ -2,6 +2,7 @@ package org.silicon;
 
 import org.silicon.device.ComputeDevice;
 
+import java.util.Iterator;
 import java.util.ServiceLoader;
 
 public class Silicon {
@@ -14,10 +15,10 @@ public class Silicon {
         }
         
         ServiceLoader<ComputeBackend> loader = ServiceLoader.load(ComputeBackend.class);
-        
+
         for (ComputeBackend backend : loader) {
             if (!backend.getType().equals(backendType)) continue;
-            
+
             Silicon.backend = backend;
             return;
         }

@@ -20,6 +20,8 @@ public class OpenCL implements ComputeBackend {
             if (result != CL10.CL_SUCCESS) throw new RuntimeException("clGetPlatformIDs failed: " + result);
             
             return buffer.get(0);
+        } catch (Exception e) {
+            return 0;
         }
     }
     
@@ -31,6 +33,8 @@ public class OpenCL implements ComputeBackend {
             if (result != CL10.CL_SUCCESS) throw new RuntimeException("clGetPlatformIDs failed: " + result);
             
             return platforms.get(0);
+        } catch (Exception e) {
+            return 0;
         }
     }
     
@@ -46,6 +50,8 @@ public class OpenCL implements ComputeBackend {
             if (result != CL10.CL_SUCCESS) throw new RuntimeException("clGetDeviceIDs failed: " + result);
             
             return numDevices.get(0);
+        } catch (Exception e) {
+            return 0;
         }
     }
     
@@ -60,7 +66,7 @@ public class OpenCL implements ComputeBackend {
     }
     
     @Override
-    public ComputeDevice createSystemDevice(int index) throws Throwable {
+    public ComputeDevice createSystemDevice(int index) {
         int deviceCount = getDeviceCount();
         
         if (index < 0) throw new IllegalArgumentException("Device index must be greater than 0!");
