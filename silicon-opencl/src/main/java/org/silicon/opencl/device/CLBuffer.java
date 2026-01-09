@@ -77,10 +77,12 @@ public class CLBuffer implements ComputeBuffer {
 
         this.state = BufferState.PENDING_FREE;
 
-        int res = CL10.clReleaseMemObject(handle);
-        if (res != 0) throw new RuntimeException("clReleaseMemObject failed: " + res);
-
-        this.state = BufferState.FREE;
+        try {
+            int res = CL10.clReleaseMemObject(handle);
+            if (res != 0) throw new RuntimeException("clReleaseMemObject failed: " + res);
+        } finally {
+            this.state = BufferState.FREE;
+        }
     }
 
     @Override

@@ -61,13 +61,7 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
         MemorySegment srcSeg = getContents().reinterpret(size);
         MemorySegment dstSeg = dst.getContents().reinterpret(size);
 
-        MemorySegment.copy(
-            srcSeg,
-            0,
-            dstSeg,
-            0,
-            size
-        );
+        MemorySegment.copy(srcSeg, 0, dstSeg, 0, size);
 
         return dst;
     }
@@ -89,8 +83,11 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
         }
 
         this.state = BufferState.PENDING_FREE;
-        release();
-        this.state = BufferState.FREE;
+        try {
+            release();
+        } finally {
+            this.state = BufferState.FREE;
+        }
     }
 
     @Override

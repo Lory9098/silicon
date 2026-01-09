@@ -22,7 +22,7 @@ public class ComputeArena implements AutoCloseable {
         }
     }
 
-    private ComputeBuffer retain(ComputeBuffer buffer) {
+    public ComputeBuffer retain(ComputeBuffer buffer) {
         retainedBuffers.add(buffer);
         return buffer;
     }

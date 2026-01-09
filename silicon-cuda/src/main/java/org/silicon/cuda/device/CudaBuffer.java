@@ -132,10 +132,12 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
         try {
             this.state = BufferState.PENDING_FREE;
 
-            int res = (int) CUDA_MEM_FREE.invoke(handle);
-            if (res != 0) throw new RuntimeException("cuMemFree failed: " + res);
-
-            this.state = BufferState.FREE;
+            try {
+                int res = (int) CUDA_MEM_FREE.invoke(handle);
+                if (res != 0) throw new RuntimeException("cuMemFree failed: " + res);
+            } finally {
+                this.state = BufferState.FREE;
+            }
         } catch (Throwable e) {
             throw new SiliconException("free() failed", e);
         }
