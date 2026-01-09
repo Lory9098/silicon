@@ -3,11 +3,8 @@ package org.silicon.opencl.device;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.system.MemoryStack;
-import org.silicon.computing.ComputeQueue;
-import org.silicon.device.ComputeBuffer;
 import org.silicon.device.ComputeContext;
 import org.silicon.device.ComputeDevice;
-import org.silicon.opencl.computing.CLCommandQueue;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;

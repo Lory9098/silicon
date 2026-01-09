@@ -3,7 +3,6 @@ package org.silicon.metal.device;
 import org.silicon.SiliconException;
 import org.silicon.device.ComputeDevice;
 import org.silicon.metal.MetalObject;
-import org.silicon.metal.kernel.MetalLibrary;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;

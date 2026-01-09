@@ -1,7 +1,7 @@
 package org.silicon.cuda.kernel;
 
-import org.silicon.kernel.ComputeFunction;
 import org.silicon.cuda.CudaObject;
+import org.silicon.kernel.ComputeFunction;
 
 import java.lang.foreign.MemorySegment;
 

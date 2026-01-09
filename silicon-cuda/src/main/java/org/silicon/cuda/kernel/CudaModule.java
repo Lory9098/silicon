@@ -1,8 +1,8 @@
 package org.silicon.cuda.kernel;
 
 import org.silicon.SiliconException;
-import org.silicon.kernel.ComputeModule;
 import org.silicon.cuda.CudaObject;
+import org.silicon.kernel.ComputeModule;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;

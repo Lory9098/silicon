@@ -2,9 +2,8 @@ package org.silicon.metal.buffer;
 
 import org.silicon.SiliconException;
 import org.silicon.metal.MetalObject;
-import org.silicon.metal.kernel.MetalPipeline;
-import org.silicon.metal.computing.MetalCommandQueue;
 import org.silicon.metal.computing.MetalEncoder;
+import org.silicon.metal.kernel.MetalPipeline;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;

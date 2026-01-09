@@ -4,12 +4,10 @@ import org.silicon.SiliconException;
 import org.silicon.computing.ComputeArgs;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.computing.ComputeSize;
-import org.silicon.device.ComputeBuffer;
 import org.silicon.kernel.ComputeFunction;
 import org.silicon.metal.MetalObject;
 import org.silicon.metal.buffer.MetalCommandBuffer;
 import org.silicon.metal.device.MetalBuffer;
-import org.silicon.metal.device.MetalDevice;
 import org.silicon.metal.kernel.MetalFunction;
 import org.silicon.metal.kernel.MetalPipeline;
 
@@ -18,7 +16,6 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.List;
-import java.util.Objects;
 
 public final class MetalCommandQueue implements MetalObject, ComputeQueue {
 

@@ -1,8 +1,8 @@
 package org.silicon.cuda.device;
 
 import org.silicon.SiliconException;
-import org.silicon.device.ComputeDevice;
 import org.silicon.cuda.CudaObject;
+import org.silicon.device.ComputeDevice;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;

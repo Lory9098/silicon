@@ -4,12 +4,12 @@ import org.silicon.SiliconException;
 import org.silicon.computing.ComputeArgs;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.computing.ComputeSize;
-import org.silicon.cuda.kernel.CudaFunction;
-import org.silicon.device.ComputeBuffer;
-import org.silicon.kernel.ComputeFunction;
 import org.silicon.cuda.CudaObject;
 import org.silicon.cuda.device.CudaBuffer;
 import org.silicon.cuda.device.CudaPointer;
+import org.silicon.cuda.kernel.CudaFunction;
+import org.silicon.device.ComputeBuffer;
+import org.silicon.kernel.ComputeFunction;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;

@@ -4,12 +4,10 @@ import org.silicon.SiliconException;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.device.ComputeBuffer;
 import org.silicon.device.ComputeContext;
-import org.silicon.kernel.ComputeModule;
 import org.silicon.metal.MetalObject;
 import org.silicon.metal.computing.MetalCommandQueue;
 import org.silicon.metal.kernel.MetalLibrary;
 
-import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;

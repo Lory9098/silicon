@@ -1,13 +1,11 @@
 package org.silicon.metal.computing;
 
-import org.silicon.Silicon;
 import org.silicon.SiliconException;
 import org.silicon.metal.MetalObject;
 import org.silicon.metal.device.MetalBuffer;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 public final class MetalEncoder implements MetalObject, AutoCloseable {

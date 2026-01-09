@@ -3,9 +3,9 @@ package org.silicon.cuda.device;
 import org.silicon.SiliconException;
 import org.silicon.backend.BufferState;
 import org.silicon.computing.ComputeQueue;
-import org.silicon.device.ComputeBuffer;
 import org.silicon.cuda.CudaObject;
 import org.silicon.cuda.computing.CudaStream;
+import org.silicon.device.ComputeBuffer;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;

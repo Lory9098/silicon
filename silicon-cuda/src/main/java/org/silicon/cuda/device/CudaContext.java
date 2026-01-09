@@ -2,11 +2,10 @@ package org.silicon.cuda.device;
 
 import org.silicon.SiliconException;
 import org.silicon.computing.ComputeQueue;
+import org.silicon.cuda.CudaObject;
 import org.silicon.cuda.computing.CudaStream;
 import org.silicon.cuda.kernel.CudaModule;
 import org.silicon.device.ComputeContext;
-import org.silicon.cuda.CudaObject;
-import org.silicon.kernel.ComputeModule;
 
 import java.io.File;
 import java.lang.foreign.Arena;
@@ -14,7 +13,6 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 

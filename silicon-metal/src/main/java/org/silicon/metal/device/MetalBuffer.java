@@ -12,7 +12,6 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Objects;
 
 public class MetalBuffer implements MetalObject, ComputeBuffer {
 
