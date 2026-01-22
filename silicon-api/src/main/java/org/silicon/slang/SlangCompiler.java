@@ -1,6 +1,6 @@
 package org.silicon.slang;
 
-import org.silicon.BackendType;
+import org.silicon.backend.BackendType;
 import org.silicon.device.ComputeContext;
 import org.silicon.kernel.ComputeModule;
 
