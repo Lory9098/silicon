@@ -8,10 +8,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 
 public class SlangCompiler {
 
@@ -72,23 +74,86 @@ public class SlangCompiler {
     }
     
     public ComputeModule compileFromResource(String resourcePath) {
-        ClassLoader cl = SlangCompiler.class.getClassLoader();
+        if (resourcePath.startsWith("/")) {
+            throw new IllegalArgumentException("Resource path must be relative (no leading '/')");
+        }
+        
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        
+        if (cl == null) {
+            throw new IllegalStateException("No context ClassLoader available");
+        }
         
         try (InputStream in = cl.getResourceAsStream(resourcePath)) {
             if (in == null) {
                 throw new IllegalArgumentException("Resource not found: " + resourcePath);
             }
             
-            Path tempDir = Files.createTempDirectory("silicon-slang-");
+            byte[] sourceBytes = in.readAllBytes();
+            String hash = sha256((backendType.name() + "\0").getBytes(StandardCharsets.UTF_8));
+            
+            hash = sha256(concat(hash.getBytes(), sourceBytes));
+            
+            Path cacheDir = cacheRoot().resolve(hash);
+            Files.createDirectories(cacheDir);
+            
             String fileName = Path.of(resourcePath).getFileName().toString();
-            Path tempSource = tempDir.resolve(fileName);
+            Path sourcePath = cacheDir.resolve(fileName);
             
-            Files.copy(in, tempSource, StandardCopyOption.REPLACE_EXISTING);
+            String target = switch (backendType) {
+                case CUDA -> "ptx";
+                case METAL -> "metal";
+                case OPENCL -> throw new IllegalStateException("OpenCL is not yet supported");
+            };
             
-            return compile(tempSource);
+            Path modulePath = cacheDir.resolve(
+                fileName.replaceAll("\\.", "_") + "." + target
+            );
             
+            // Cache hit
+            if (Files.exists(modulePath)) {
+                return context.loadModule(modulePath);
+            }
+            
+            // Cache miss → compile
+            Files.write(sourcePath, sourceBytes);
+            return compile(sourcePath);
         } catch (IOException e) {
             throw new RuntimeException("Failed to compile resource: " + resourcePath, e);
+        }
+    }
+
+    
+    private static Path cacheRoot() {
+        return Paths.get(
+            System.getProperty("user.home"),
+            ".cache",
+            "silicon",
+            "slang"
+        );
+    }
+    
+    private static byte[] concat(byte[] a, byte[] b) {
+        byte[] out = new byte[a.length + b.length];
+        System.arraycopy(a, 0, out, 0, a.length);
+        System.arraycopy(b, 0, out, a.length, b.length);
+        return out;
+    }
+    
+    private static String sha256(byte[] data) {
+        try {
+            var md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(data);
+            
+            StringBuilder sb = new StringBuilder();
+            
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            
+            return sb.toString();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 }
