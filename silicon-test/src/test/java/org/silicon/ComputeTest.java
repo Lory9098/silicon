@@ -24,8 +24,8 @@ public class ComputeTest {
         ComputeContext context = device.createContext();
         
         SlangCompiler compiler = new SlangCompiler(context, Silicon.getBackend().getType());
-
-        ComputeModule module = compiler.compile(Path.of("resources/vector_add.slang"));
+        
+        ComputeModule module = compiler.compileFromResource("vector_add.slang");
         ComputeFunction function = module.getFunction("add");
         
         float[] dataA = new float[N];

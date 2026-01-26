@@ -5,9 +5,13 @@ import org.silicon.device.ComputeContext;
 import org.silicon.kernel.ComputeModule;
 
 import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 public class SlangCompiler {
 
@@ -64,6 +68,27 @@ public class SlangCompiler {
             return context.loadModule(outPath);
         } catch (Throwable e) {
             throw new RuntimeException(e);
+        }
+    }
+    
+    public ComputeModule compileFromResource(String resourcePath) {
+        ClassLoader cl = SlangCompiler.class.getClassLoader();
+        
+        try (InputStream in = cl.getResourceAsStream(resourcePath)) {
+            if (in == null) {
+                throw new IllegalArgumentException("Resource not found: " + resourcePath);
+            }
+            
+            Path tempDir = Files.createTempDirectory("silicon-slang-");
+            String fileName = Path.of(resourcePath).getFileName().toString();
+            Path tempSource = tempDir.resolve(fileName);
+            
+            Files.copy(in, tempSource, StandardCopyOption.REPLACE_EXISTING);
+            
+            return compile(tempSource);
+            
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to compile resource: " + resourcePath, e);
         }
     }
 }
