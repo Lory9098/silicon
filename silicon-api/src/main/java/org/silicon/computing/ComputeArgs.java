@@ -35,7 +35,7 @@ public class ComputeArgs {
         return this;
     }
 
-    public ComputeArgs floatVal(int value) {
+    public ComputeArgs floatVal(float value) {
         args.add(value);
         return this;
     }
