@@ -9,7 +9,7 @@ import java.util.ServiceLoader;
 public class Silicon {
 
     private static ComputeBackend backend;
-    
+
     public static void chooseBackend(BackendType backendType) {
         if (backendType == null) {
             throw new NullPointerException("Chosen backend type cannot be null!");

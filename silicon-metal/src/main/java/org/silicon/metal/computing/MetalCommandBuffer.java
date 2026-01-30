@@ -1,16 +1,18 @@
-package org.silicon.metal.buffer;
+package org.silicon.metal.computing;
 
 import org.silicon.SiliconException;
+import org.silicon.memory.Freeable;
+import org.silicon.memory.MemoryState;
 import org.silicon.metal.MetalObject;
-import org.silicon.metal.computing.MetalEncoder;
 import org.silicon.metal.kernel.MetalPipeline;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.util.Objects;
 
-public record MetalCommandBuffer(MemorySegment handle) implements MetalObject {
+public final class MetalCommandBuffer implements MetalObject, Freeable {
 
     public static final MethodHandle METAL_MAKE_ENCODER = MetalObject.find(
         "metal_make_encoder",
@@ -24,15 +26,22 @@ public record MetalCommandBuffer(MemorySegment handle) implements MetalObject {
         "metal_wait_until_completed",
         FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
     );
+    private final MemorySegment handle;
+    private MemoryState state;
+
+    public MetalCommandBuffer(MemorySegment handle) {
+        this.handle = handle;
+        this.state = MemoryState.ALIVE;
+    }
 
     public MetalEncoder makeEncoder(MetalPipeline pipeline) {
         try {
             MemorySegment ptr = (MemorySegment) METAL_MAKE_ENCODER.invokeExact(handle, pipeline.handle());
-           
+
             if (ptr == null || ptr.address() == 0) {
                 throw new RuntimeException("makeComputeCommandEncoder failed!");
             }
-            
+
             return new MetalEncoder(ptr);
         } catch (Throwable e) {
             throw new SiliconException("makeEncoder(MetalPipeline) failed", e);
@@ -53,5 +62,35 @@ public record MetalCommandBuffer(MemorySegment handle) implements MetalObject {
         } catch (Throwable e) {
             throw new SiliconException("waitUntilCompleted() failed", e);
         }
+    }
+
+    @Override
+    public MemoryState state() {
+        return state;
+    }
+
+    @Override
+    public void free() {
+        if (!isAlive()) return;
+
+        try {
+            METAL_RELEASE_OBJECT.invokeExact(handle);
+            state = MemoryState.FREE;
+        } catch (Throwable t) {
+            throw new SiliconException("free() failed", t);
+        }
+    }
+
+    @Override
+    public MemorySegment handle() {
+        return handle;
+    }
+
+    @Override
+    public String toString() {
+        return "MetalCommandBuffer{" +
+            "handle=" + handle +
+            ", state=" + state +
+            '}';
     }
 }

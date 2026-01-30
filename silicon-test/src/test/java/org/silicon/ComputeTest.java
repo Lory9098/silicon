@@ -1,6 +1,7 @@
 package org.silicon;
 
 import org.silicon.computing.ComputeArgs;
+import org.silicon.computing.ComputeEvent;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.computing.ComputeSize;
 import org.silicon.device.*;
@@ -13,7 +14,7 @@ import java.util.Arrays;
 public class ComputeTest {
     
     public static void main(String[] args) {
-        int N = 2048 * 2048;
+        int N = 512 * 512 * 512;
 
         System.out.println("Chosen backend " + Silicon.backend().name());
         
@@ -22,9 +23,6 @@ public class ComputeTest {
 
         System.out.println("Device name: " + device.name());
         System.out.println("Vendor: " + device.vendor());
-        System.out.println("Device memory: " + device.memorySize());
-        System.out.println("Supports FP16? " + device.supports(DeviceFeature.FP16));
-        System.out.println("Supports FP64? " + device.supports(DeviceFeature.FP64));
 
         SlangCompiler compiler = new SlangCompiler(context);
 
@@ -52,6 +50,7 @@ public class ComputeTest {
             float[] result = new float[64];
             c.get(result);
             System.out.println(Arrays.toString(result));
+            System.out.println("resulted");
         }
     }
     

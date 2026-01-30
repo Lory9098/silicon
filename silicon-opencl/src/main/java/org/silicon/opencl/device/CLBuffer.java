@@ -1,7 +1,7 @@
 package org.silicon.opencl.device;
 
 import org.lwjgl.opencl.CL10;
-import org.silicon.memory.BufferState;
+import org.silicon.memory.MemoryState;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.device.ComputeBuffer;
 import org.silicon.opencl.computing.CLCommandQueue;
@@ -14,18 +14,13 @@ public class CLBuffer implements ComputeBuffer {
     private final CLContext context;
     private final long handle;
     private final long size;
-    private BufferState state;
+    private MemoryState state;
 
     public CLBuffer(long handle, CLContext context, long size) {
         this.handle = handle;
         this.context = context;
         this.size = size;
-        this.state = BufferState.ALIVE;
-    }
-
-    @Override
-    public BufferState getState() {
-        return state;
+        this.state = MemoryState.ALIVE;
     }
 
     @Override
@@ -81,19 +76,18 @@ public class CLBuffer implements ComputeBuffer {
     }
 
     @Override
+    public MemoryState state() {
+        return state;
+    }
+
+    @Override
     public void free() {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE and cannot be freed! Current buffer state: " + state);
-        }
+        if (state != MemoryState.ALIVE) return;
 
-        this.state = BufferState.PENDING_FREE;
+        int res = CL10.clReleaseMemObject(handle);
+        if (res != 0) throw new RuntimeException("clReleaseMemObject failed: " + res);
 
-        try {
-            int res = CL10.clReleaseMemObject(handle);
-            if (res != 0) throw new RuntimeException("clReleaseMemObject failed: " + res);
-        } finally {
-            this.state = BufferState.FREE;
-        }
+        state = MemoryState.FREE;
     }
 
     @Override
@@ -161,7 +155,7 @@ public class CLBuffer implements ComputeBuffer {
     }
 
     private Result readBuffer(long required) {
-        if (state != BufferState.ALIVE) {
+        if (state != MemoryState.ALIVE) {
             throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
         }
 

@@ -1,20 +1,26 @@
 package org.silicon.cuda;
 
-import org.silicon.SiliconException;
-import org.silicon.memory.Freeable;
-
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import java.util.Optional;
 
-public interface CudaObject extends Freeable {
+public interface CudaObject {
     
     Linker LINKER = CUDA.LINKER;
     SymbolLookup LOOKUP = CUDA.LOOKUP;
-    MethodHandle CUDA_RELEASE_OBJECT = LINKER.downcallHandle(
-        LOOKUP.find("cuda_release_object").orElse(null),
+    MethodHandle CUDA_RELEASE_OBJECT = CudaObject.find(
+        "cuda_release_object",
         FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
     );
-    
+
+    static MethodHandle find(String callName, FunctionDescriptor descriptor) {
+        Optional<MemorySegment> call = LOOKUP.find(callName);
+
+        if (call.isEmpty()) throw new NullPointerException("%s is not present!".formatted(callName));
+
+        return LINKER.downcallHandle(call.get(), descriptor);
+    }
+
     default long bytesOf(byte[] array) {
         return array.length;
     }
@@ -37,14 +43,6 @@ public interface CudaObject extends Freeable {
     
     default long bytesOf(short[] array) {
         return (long) array.length * Short.BYTES;
-    }
-    
-    default void free() {
-        try {
-            CUDA_RELEASE_OBJECT.invokeExact(handle());
-        } catch (Throwable e) {
-            throw new SiliconException("free() failed", e);
-        }
     }
 
     MemorySegment handle();

@@ -3,16 +3,31 @@ package org.silicon.opencl.computing;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.system.MemoryStack;
+import org.silicon.SiliconException;
 import org.silicon.computing.ComputeArgs;
+import org.silicon.computing.ComputeEvent;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.computing.ComputeSize;
+import org.silicon.device.ComputeArena;
 import org.silicon.kernel.ComputeFunction;
+import org.silicon.memory.MemoryState;
 import org.silicon.opencl.device.CLBuffer;
 import org.silicon.opencl.kernel.CLKernel;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
-public record CLCommandQueue(long handle) implements ComputeQueue {
+public final class CLCommandQueue implements ComputeQueue {
+
+    private final long handle;
+    private final ComputeArena arena;
+    private MemoryState state;
+
+    public CLCommandQueue(long handle, ComputeArena arena) {
+        this.handle = handle;
+        this.arena = arena;
+        this.state = MemoryState.ALIVE;
+    }
 
     private PointerBuffer toBuffer(ComputeSize size, MemoryStack stack) {
         int dim = size.workDim();
@@ -24,27 +39,18 @@ public record CLCommandQueue(long handle) implements ComputeQueue {
     }
 
     @Override
-    public void dispatch(ComputeFunction function, ComputeSize globalSize, ComputeSize groupSize, ComputeArgs args) {
+    public void dispatch(
+        ComputeFunction function,
+        ComputeSize globalSize,
+        ComputeSize groupSize,
+        ComputeArgs args
+    ) {
         if (!(function instanceof CLKernel(long kernelHandle))) {
             throw new IllegalArgumentException("Compute function is not an OpenCL kernel!");
         }
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            List<Object> computeArgs = args.getArgs();
-            for (int i = 0; i < args.size(); i++) {
-                Object arg = computeArgs.get(i);
-                switch (arg) {
-                    case Byte val -> CL10.clSetKernelArg(kernelHandle, i, stack.bytes(val));
-                    case Double val -> CL10.clSetKernelArg(kernelHandle, i, stack.doubles(val));
-                    case Float val -> CL10.clSetKernelArg(kernelHandle, i, stack.floats(val));
-                    case Integer val -> CL10.clSetKernelArg(kernelHandle, i, stack.ints(val));
-                    case Long val -> CL10.clSetKernelArg(kernelHandle, i, stack.longs(val));
-                    case Short val -> CL10.clSetKernelArg(kernelHandle, i, stack.shorts(val));
-                    case String val -> CL10.clSetKernelArg(kernelHandle, i, stack.ASCII(val));
-                    case CLBuffer val -> CL10.clSetKernelArg(kernelHandle, i, stack.pointers(val.getHandle()));
-                    default -> throw new IllegalStateException("Unexpected value: " + arg);
-                }
-            }
+            setArgs(args, kernelHandle, stack);
 
             ComputeSize fixedLocal = fixLocalSize(globalSize, groupSize);
             ComputeSize fixedGlobal = fixGlobalSize(globalSize, fixedLocal);
@@ -67,13 +73,100 @@ public record CLCommandQueue(long handle) implements ComputeQueue {
     }
 
     @Override
+    public CompletableFuture<Void> dispatchAsync(
+        ComputeFunction function,
+        ComputeSize globalSize,
+        ComputeSize groupSize,
+        ComputeArgs args
+    ) {
+        if (!(function instanceof CLKernel(long kernelHandle))) {
+            throw new IllegalArgumentException("Compute function is not an OpenCL kernel!");
+        }
+
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            setArgs(args, kernelHandle, stack);
+
+            if (globalSize == null) throw new IllegalArgumentException("Global size cannot be null!");
+            if (groupSize == null) throw new IllegalArgumentException("Group size cannot be null!");
+
+            ComputeSize fixedLocal = fixLocalSize(globalSize, groupSize);
+            ComputeSize fixedGlobal = fixGlobalSize(globalSize, fixedLocal);
+
+            PointerBuffer globalBuf = toBuffer(fixedGlobal, stack);
+            PointerBuffer localBuf = fixedLocal != null ? toBuffer(fixedLocal, stack) : null;
+
+            PointerBuffer eventPtr = stack.mallocPointer(1);
+            int err = CL10.clEnqueueNDRangeKernel(
+                handle,
+                kernelHandle, // cl_kernel
+                globalSize.workDim(), // work_dim
+                null, // global offset
+                globalBuf, // global size
+                localBuf,
+                null, // wait list (in-order queue)
+                eventPtr // event out
+            );
+            if (err != CL10.CL_SUCCESS) throw new IllegalStateException("clEnqueueNDRangeKernel failed: " + err);
+
+            long event = eventPtr.get(0);
+
+            CompletableFuture<Void> callback = new CompletableFuture<>();
+            Thread.startVirtualThread(() -> {
+                try {
+                    CL10.clWaitForEvents(eventPtr);
+                    callback.complete(null);
+                } catch (Throwable t) {
+                    callback.completeExceptionally(t);
+                } finally {
+                    CL10.clReleaseEvent(event);
+                }
+            });
+
+            return callback;
+        }
+    }
+
+    @Override
     public void awaitCompletion() {
+        if (state != MemoryState.ALIVE) {
+            throw new IllegalStateException("Queue is not ALIVE! Current queue state: " + state);
+        }
+
         CL10.clFinish(handle);
     }
 
     @Override
+    public MemoryState state() {
+        return state;
+    }
+
+    @Override
     public void free() {
-        CL10.clReleaseCommandQueue(handle);
+        if (state != MemoryState.ALIVE) return;
+
+        int err = CL10.clReleaseCommandQueue(handle);
+
+        if (err != 0) throw new SiliconException("clReleaseCommandQueue failed: " + err);
+
+        state = MemoryState.FREE;
+    }
+
+    private static void setArgs(ComputeArgs args, long kernelHandle, MemoryStack stack) {
+        List<Object> computeArgs = args.getArgs();
+        for (int i = 0; i < args.size(); i++) {
+            Object arg = computeArgs.get(i);
+            switch (arg) {
+                case Byte val -> CL10.clSetKernelArg(kernelHandle, i, stack.bytes(val));
+                case Double val -> CL10.clSetKernelArg(kernelHandle, i, stack.doubles(val));
+                case Float val -> CL10.clSetKernelArg(kernelHandle, i, stack.floats(val));
+                case Integer val -> CL10.clSetKernelArg(kernelHandle, i, stack.ints(val));
+                case Long val -> CL10.clSetKernelArg(kernelHandle, i, stack.longs(val));
+                case Short val -> CL10.clSetKernelArg(kernelHandle, i, stack.shorts(val));
+                case String val -> CL10.clSetKernelArg(kernelHandle, i, stack.ASCII(val));
+                case CLBuffer val -> CL10.clSetKernelArg(kernelHandle, i, stack.pointers(val.getHandle()));
+                default -> throw new IllegalStateException("Unexpected value: " + arg);
+            }
+        }
     }
 
     private ComputeSize fixGlobalSize(ComputeSize global, ComputeSize local) {
@@ -96,5 +189,17 @@ public record CLCommandQueue(long handle) implements ComputeQueue {
         if (lx > global.x()) lx = global.x();
 
         return new ComputeSize(lx, 1, 1);
+    }
+
+    public long handle() {
+        return handle;
+    }
+
+    @Override
+    public String toString() {
+        return "CLCommandQueue{" +
+            "handle=" + handle +
+            ", state=" + state +
+            '}';
     }
 }

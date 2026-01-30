@@ -59,7 +59,7 @@ public record CudaPointer(MemorySegment segment) {
     
     public static CudaPointer fromBuffer(CudaBuffer buf) {
         MemorySegment seg = GLOBAL.allocate(JAVA_LONG);
-        seg.set(JAVA_LONG, 0, buf.getNativePointer());
+        seg.set(JAVA_LONG, 0, buf.nativePointer());
         return new CudaPointer(seg);
     }
     

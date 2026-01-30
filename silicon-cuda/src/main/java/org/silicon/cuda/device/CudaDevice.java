@@ -4,23 +4,25 @@ import org.silicon.SiliconException;
 import org.silicon.cuda.CudaObject;
 import org.silicon.device.ComputeDevice;
 import org.silicon.device.DeviceFeature;
+import org.silicon.memory.MemoryState;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.util.Objects;
 
 public record CudaDevice(MemorySegment handle, int index) implements CudaObject, ComputeDevice {
-    
-    public static final MethodHandle CUDA_DEVICE_NAME = LINKER.downcallHandle(
-        LOOKUP.find("cuda_device_name").orElse(null),
+
+    public static final MethodHandle CUDA_DEVICE_NAME = CudaObject.find(
+        "cuda_device_name",
         FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
     );
-    public static final MethodHandle CUDA_CREATE_CONTEXT = LINKER.downcallHandle(
-        LOOKUP.find("cuda_create_context").orElse(null),
+    public static final MethodHandle CUDA_CREATE_CONTEXT = CudaObject.find(
+        "cuda_create_context",
         FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
     );
-    
+
     @Override
     public CudaContext createContext() {
         try {
@@ -31,18 +33,18 @@ public record CudaDevice(MemorySegment handle, int index) implements CudaObject,
             }
 
             return new CudaContext(ctx, this).setCurrent();
-        } catch (Throwable e){
+        } catch (Throwable e) {
             throw new SiliconException("createContext() failed", e);
         }
     }
-    
+
     @Override
     public String name() {
         try {
             MemorySegment nameHandle = (MemorySegment) CUDA_DEVICE_NAME.invokeExact(handle);
             return nameHandle.reinterpret(Long.MAX_VALUE).getString(0);
         } catch (Throwable e) {
-            throw new SiliconException("getName() failed", e);
+            throw new SiliconException("name() failed", e);
         }
     }
 
@@ -60,5 +62,4 @@ public record CudaDevice(MemorySegment handle, int index) implements CudaObject,
     public boolean supports(DeviceFeature feature) {
         return false; // TODO
     }
-
 }

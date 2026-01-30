@@ -1,7 +1,7 @@
 package org.silicon.metal.device;
 
 import org.silicon.SiliconException;
-import org.silicon.memory.BufferState;
+import org.silicon.memory.MemoryState;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.device.ComputeBuffer;
 import org.silicon.metal.MetalObject;
@@ -19,28 +19,22 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
         "metal_buffer_contents",
         FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
     );
+
     private final MemorySegment handle;
     private final MetalContext context;
     private final long size;
-    private BufferState state;
+    private MemoryState state;
 
     public MetalBuffer(MemorySegment handle, MetalContext context, long size) {
         this.handle = handle;
         this.context = context;
         this.size = size;
-        this.state = BufferState.ALIVE;
-    }
-
-    @Override
-    public BufferState getState() {
-        return state;
+        this.state = MemoryState.ALIVE;
     }
 
     @Override
     public MetalBuffer copy() {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE and cannot be copied! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         MetalBuffer buffer = context.allocateBytes(size);
         copyInto(buffer);
@@ -49,7 +43,7 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
 
     @Override
     public MetalBuffer copyInto(ComputeBuffer other) {
-        if (state != BufferState.ALIVE) {
+        if (state != MemoryState.ALIVE) {
             throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
         }
 
@@ -74,18 +68,21 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
     public MetalBuffer copyIntoAsync(ComputeBuffer other, ComputeQueue queue) {
         return copyInto(other);
     }
+    
+    @Override
+    public MemoryState state() {
+        return state;
+    }
 
     @Override
     public void free() {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE and cannot be freed! Current buffer state: " + state);
-        }
+        if (!isAlive()) return;
 
-        this.state = BufferState.PENDING_FREE;
         try {
-            MetalObject.super.free();
-        } finally {
-            this.state = BufferState.FREE;
+            METAL_RELEASE_OBJECT.invokeExact(handle);
+            state = MemoryState.FREE;
+        } catch (Throwable t) {
+            throw new SiliconException("free() failed", t);
         }
     }
 
@@ -120,7 +117,7 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
     }
 
     public ByteBuffer asByteBuffer() {
-        if (state != BufferState.ALIVE) {
+        if (state != MemoryState.ALIVE) {
             throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
         }
 
@@ -135,11 +132,11 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
         return handle;
     }
 
-    public MetalContext getContext() {
+    public MetalContext context() {
         return context;
     }
 
-    public long getSize() {
+    public long size() {
         return size;
     }
 
@@ -153,10 +150,11 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
 
     @Override
     public String toString() {
-        return "MetalBuffer[" +
-            "handle=" + handle + ", " +
-            "context=" + context + ", " +
-            "size=" + size + ']';
+        return "MetalBuffer{" +
+            "handle=" + handle +
+            ", context=" + context +
+            ", size=" + size +
+            ", state=" + state +
+            '}';
     }
-
 }

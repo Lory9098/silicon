@@ -26,6 +26,8 @@ public interface ComputeContext {
 
     ComputeQueue createQueue();
 
+    ComputeQueue createQueue(ComputeArena arena);
+
     ComputeModule loadModule(Path path);
 
     ComputeModule loadModule(byte[] rawSrc);

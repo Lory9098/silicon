@@ -24,16 +24,16 @@ public class CUDA implements ComputeBackend {
         LOOKUP = loadFromResources("/libcuda4j.dll");
         
         if (LOOKUP != null) {
-            CUDA_INIT = LINKER.downcallHandle(
-                LOOKUP.find("cuda_init").orElse(null),
+            CUDA_INIT = CudaObject.find(
+                "cuda_init",
                 FunctionDescriptor.ofVoid()
             );
-            CUDA_DEVICE_COUNT = LINKER.downcallHandle(
-                LOOKUP.find("cuda_device_count").orElse(null),
+            CUDA_DEVICE_COUNT = CudaObject.find(
+                "cuda_device_count",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT)
             );
-            CUDA_CREATE_SYSTEM_DEVICE = LINKER.downcallHandle(
-                LOOKUP.find("cuda_create_system_device").orElse(null),
+            CUDA_CREATE_SYSTEM_DEVICE = CudaObject.find(
+                "cuda_create_system_device",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
             );
 

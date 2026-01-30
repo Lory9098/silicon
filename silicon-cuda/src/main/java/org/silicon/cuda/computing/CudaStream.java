@@ -8,27 +8,31 @@ import org.silicon.cuda.CudaObject;
 import org.silicon.cuda.device.CudaBuffer;
 import org.silicon.cuda.device.CudaPointer;
 import org.silicon.cuda.kernel.CudaFunction;
+import org.silicon.device.ComputeArena;
 import org.silicon.device.ComputeBuffer;
 import org.silicon.kernel.ComputeFunction;
+import org.silicon.memory.Freeable;
+import org.silicon.memory.MemoryState;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
-public record CudaStream(MemorySegment handle) implements CudaObject, ComputeQueue {
+public final class CudaStream implements CudaObject, ComputeQueue, Freeable {
 
-    public static final MethodHandle CUDA_STREAM_DESTROY = LINKER.downcallHandle(
-        LOOKUP.find("cuda_stream_destroy").orElse(null),
+    public static final MethodHandle CUDA_STREAM_DESTROY = CudaObject.find(
+        "cuda_stream_destroy",
         FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
     );
-    public static final MethodHandle CUDA_STREAM_SYNC = LINKER.downcallHandle(
-        LOOKUP.find("cuda_stream_sync").orElse(null),
+    public static final MethodHandle CUDA_STREAM_SYNC = CudaObject.find(
+        "cuda_stream_sync",
         FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
     );
-    private static final MethodHandle CUDA_LAUNCH_KERNEL = LINKER.downcallHandle(
-        LOOKUP.find("cuda_launch_kernel").orElse(null),
+    private static final MethodHandle CUDA_LAUNCH_KERNEL = CudaObject.find(
+        "cuda_launch_kernel",
         FunctionDescriptor.of(
             ValueLayout.JAVA_INT, // return
             ValueLayout.ADDRESS, // function
@@ -40,8 +44,20 @@ public record CudaStream(MemorySegment handle) implements CudaObject, ComputeQue
         )
     );
 
+    private final MemorySegment handle;
+    private final ComputeArena arena;
+    private MemoryState state;
+
+    public CudaStream(MemorySegment handle, ComputeArena arena) {
+        this.handle = handle;
+        this.arena = arena;
+        this.state = MemoryState.ALIVE;
+    }
+
     @Override
     public void dispatch(ComputeFunction function, ComputeSize globalSize, ComputeSize groupSize, ComputeArgs args) {
+        ensureAlive();
+
         if (!(function instanceof CudaFunction(MemorySegment funcHandle))) {
             throw new IllegalArgumentException("Compute function is not an CUDA stream!");
         }
@@ -90,7 +106,19 @@ public record CudaStream(MemorySegment handle) implements CudaObject, ComputeQue
     }
 
     @Override
+    public CompletableFuture<Void> dispatchAsync(
+        ComputeFunction function,
+        ComputeSize globalSize,
+        ComputeSize groupSize,
+        ComputeArgs args
+    ) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
     public void awaitCompletion() {
+        ensureAlive();
+
         try {
             int res = (int) CUDA_STREAM_SYNC.invoke(handle);
             if (res != 0) throw new RuntimeException("cuStreamSynchronized failed: " + res);
@@ -100,13 +128,35 @@ public record CudaStream(MemorySegment handle) implements CudaObject, ComputeQue
     }
 
     @Override
+    public MemoryState state() {
+        return state;
+    }
+
+    @Override
     public void free() {
+        if (!isAlive()) return;
+
         try {
             int res = (int) CUDA_STREAM_DESTROY.invoke(handle);
             if (res != 0) throw new RuntimeException("cuStreamDestroy failed: " + res);
-            CudaObject.super.free();
+
+            CUDA_RELEASE_OBJECT.invokeExact(handle());
+            state = MemoryState.FREE;
         } catch (Throwable e) {
             throw new SiliconException("free() failed", e);
         }
+    }
+
+    @Override
+    public MemorySegment handle() {
+        return handle;
+    }
+
+    @Override
+    public String toString() {
+        return "CudaStream{" +
+            "handle=" + handle +
+            ", state=" + state +
+            '}';
     }
 }

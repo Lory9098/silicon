@@ -1,13 +1,10 @@
 package org.silicon.metal;
 
-import org.silicon.SiliconException;
-import org.silicon.memory.Freeable;
-
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.util.Optional;
 
-public interface MetalObject extends Freeable {
+public interface MetalObject {
     
     Linker LINKER = Metal.LINKER;
     SymbolLookup LOOKUP = Metal.LOOKUP;
@@ -15,14 +12,6 @@ public interface MetalObject extends Freeable {
         "metal_release_object",
         FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
     );
-
-    default void free() {
-        try {
-            METAL_RELEASE_OBJECT.invokeExact(handle());
-        } catch (Throwable e) {
-            throw new SiliconException("free() failed", e);
-        }
-    }
     
     static MethodHandle find(String callName, FunctionDescriptor descriptor) {
         Optional<MemorySegment> call = LOOKUP.find(callName);
@@ -31,6 +20,6 @@ public interface MetalObject extends Freeable {
         
         return LINKER.downcallHandle(call.get(), descriptor);
     }
-    
+
     MemorySegment handle();
 }

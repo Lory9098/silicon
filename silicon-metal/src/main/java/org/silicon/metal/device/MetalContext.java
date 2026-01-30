@@ -3,6 +3,7 @@ package org.silicon.metal.device;
 import org.silicon.SiliconException;
 import org.silicon.backend.BackendType;
 import org.silicon.computing.ComputeQueue;
+import org.silicon.device.ComputeArena;
 import org.silicon.device.ComputeBuffer;
 import org.silicon.device.ComputeContext;
 import org.silicon.metal.MetalObject;
@@ -44,6 +45,11 @@ public record MetalContext(MetalDevice device) implements MetalObject, ComputeCo
     
     @Override
     public MetalCommandQueue createQueue() {
+        return createQueue(null);
+    }
+
+    @Override
+    public MetalCommandQueue createQueue(ComputeArena arena) {
         try {
             MemorySegment queuePtr = (MemorySegment) METAL_CREATE_COMMAND_QUEUE.invokeExact(device.handle());
 
@@ -51,7 +57,7 @@ public record MetalContext(MetalDevice device) implements MetalObject, ComputeCo
                 throw new RuntimeException("Failed to create Metal command queue");
             }
 
-            return new MetalCommandQueue(queuePtr);
+            return new MetalCommandQueue(queuePtr, arena);
         } catch (Throwable e) {
             throw new SiliconException("createQueue() failed", e);
         }

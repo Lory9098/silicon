@@ -5,6 +5,7 @@ import org.lwjgl.system.MemoryStack;
 import org.silicon.SiliconException;
 import org.silicon.backend.BackendType;
 import org.silicon.computing.ComputeQueue;
+import org.silicon.device.ComputeArena;
 import org.silicon.device.ComputeContext;
 import org.silicon.kernel.ComputeModule;
 import org.silicon.opencl.computing.CLCommandQueue;
@@ -42,16 +43,21 @@ public record CLContext(long handle, long device) implements ComputeContext {
     
     @Override
     public CLCommandQueue createQueue() {
+        return createQueue(null);
+    }
+
+    @Override
+    public CLCommandQueue createQueue(ComputeArena arena) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             IntBuffer result = stack.mallocInt(1);
-            
+
             long queue = CL10.clCreateCommandQueue(handle, device, 0, result);
             if (result.get(0) != CL10.CL_SUCCESS) throw new RuntimeException("clCreateCommandQueue failed: " + result.get(0));
-            
-            return new CLCommandQueue(queue);
+
+            return new CLCommandQueue(queue, arena);
         }
     }
-    
+
     @Override
     public ComputeModule loadModule(Path path) {
         try {

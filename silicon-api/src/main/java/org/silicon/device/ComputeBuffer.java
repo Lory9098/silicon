@@ -1,12 +1,9 @@
 package org.silicon.device;
 
-import org.silicon.memory.BufferState;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.memory.Freeable;
 
 public interface ComputeBuffer extends Freeable {
-    BufferState getState();
-
     ComputeBuffer copy();
 
     ComputeBuffer copyInto(ComputeBuffer other);

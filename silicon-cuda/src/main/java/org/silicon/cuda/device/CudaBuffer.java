@@ -1,7 +1,8 @@
 package org.silicon.cuda.device;
 
 import org.silicon.SiliconException;
-import org.silicon.memory.BufferState;
+import org.silicon.memory.Freeable;
+import org.silicon.memory.MemoryState;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.cuda.CudaObject;
 import org.silicon.cuda.computing.CudaStream;
@@ -13,55 +14,55 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
-public class CudaBuffer implements CudaObject, ComputeBuffer {
+public class CudaBuffer implements CudaObject, ComputeBuffer, Freeable {
 
-    public static final MethodHandle CUDA_BUFFER_PTR = LINKER.downcallHandle(
-        LOOKUP.find("cuda_buffer_ptr").orElse(null),
+    public static final MethodHandle CUDA_BUFFER_PTR = CudaObject.find(
+        "cuda_buffer_ptr",
         FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
     );
-    public static final MethodHandle CUDA_MEM_FREE = LINKER.downcallHandle(
-        LOOKUP.find("cuda_mem_free").orElse(null),
+    public static final MethodHandle CUDA_MEM_FREE = CudaObject.find(
+        "cuda_mem_free",
         FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
     );
-    public static final MethodHandle CUDA_MEMCPY_HTOD = LINKER.downcallHandle(
-        LOOKUP.find("cuda_memcpy_htod").orElse(null),
+    public static final MethodHandle CUDA_MEMCPY_HTOD = CudaObject.find(
+        "cuda_memcpy_htod",
         FunctionDescriptor.of(ValueLayout.JAVA_INT,
             ValueLayout.ADDRESS, // buffer pointer
             ValueLayout.ADDRESS, // host pointer
             ValueLayout.JAVA_LONG) // size
     );
-    public static final MethodHandle CUDA_MEMCPY_DTOH = LINKER.downcallHandle(
-        LOOKUP.find("cuda_memcpy_dtoh").orElse(null),
+    public static final MethodHandle CUDA_MEMCPY_DTOH = CudaObject.find(
+        "cuda_memcpy_dtoh",
         FunctionDescriptor.of(ValueLayout.JAVA_INT,
             ValueLayout.ADDRESS, // host pointer
             ValueLayout.ADDRESS, // buffer pointer
             ValueLayout.JAVA_LONG) // size
     );
-    public static final MethodHandle CUDA_MEMCPY_DTOD = LINKER.downcallHandle(
-        LOOKUP.find("cuda_memcpy_dtod").orElse(null),
+    public static final MethodHandle CUDA_MEMCPY_DTOD = CudaObject.find(
+        "cuda_memcpy_dtod",
         FunctionDescriptor.of(ValueLayout.JAVA_INT,
             ValueLayout.ADDRESS, // destination pointer
             ValueLayout.ADDRESS, // source pointer
             ValueLayout.JAVA_LONG) // size
     );
-    public static final MethodHandle CUDA_MEMCPY_HTOD_ASYNC = LINKER.downcallHandle(
-        LOOKUP.find("cuda_memcpy_htod_async").orElse(null),
+    public static final MethodHandle CUDA_MEMCPY_HTOD_ASYNC = CudaObject.find(
+        "cuda_memcpy_htod_async",
         FunctionDescriptor.of(ValueLayout.JAVA_INT,
             ValueLayout.ADDRESS, // buffer pointer
             ValueLayout.ADDRESS, // host pointer
             ValueLayout.JAVA_LONG, // size
             ValueLayout.ADDRESS) // stream
     );
-    public static final MethodHandle CUDA_MEMCPY_DTOH_ASYNC = LINKER.downcallHandle(
-        LOOKUP.find("cuda_memcpy_dtoh_async").orElse(null),
+    public static final MethodHandle CUDA_MEMCPY_DTOH_ASYNC = CudaObject.find(
+        "cuda_memcpy_dtoh_async",
         FunctionDescriptor.of(ValueLayout.JAVA_INT,
             ValueLayout.ADDRESS, // host pointer
             ValueLayout.ADDRESS, // buffer pointer
             ValueLayout.JAVA_LONG, // size
             ValueLayout.ADDRESS) // stream
     );
-    public static final MethodHandle CUDA_MEMCPY_DTOD_ASYNC = LINKER.downcallHandle(
-        LOOKUP.find("cuda_memcpy_dtod_async").orElse(null),
+    public static final MethodHandle CUDA_MEMCPY_DTOD_ASYNC = CudaObject.find(
+        "cuda_memcpy_dtod_async",
         FunctionDescriptor.of(ValueLayout.JAVA_INT,
             ValueLayout.ADDRESS, // destination pointer
             ValueLayout.ADDRESS, // source pointer
@@ -72,18 +73,13 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     private final CudaContext context;
     private final MemorySegment handle;
     private final long size;
-    private BufferState state;
+    private MemoryState state;
 
     public CudaBuffer(CudaContext context, MemorySegment handle, long size) {
         this.context = context;
         this.handle = handle;
         this.size = size;
-        this.state = BufferState.ALIVE;
-    }
-
-    @Override
-    public BufferState getState() {
-        return state;
+        this.state = MemoryState.ALIVE;
     }
 
     @Override
@@ -94,6 +90,8 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     @Override
     public CudaBuffer copyInto(ComputeBuffer other) {
+        ensureAlive();
+        
         try {
             CudaBuffer buffer = (CudaBuffer) other;
 
@@ -114,10 +112,13 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     @Override
     public CudaBuffer copyIntoAsync(ComputeBuffer other, ComputeQueue queue) {
-        try {
-            CudaBuffer buffer = (CudaBuffer) other;
-            CudaStream stream = (CudaStream) queue;
+        ensureAlive();
+        ensureOther(other);
 
+        if (!(queue instanceof CudaStream stream)) throw new IllegalArgumentException("Queue is not a CUDA stream");
+        if (!(other instanceof CudaBuffer buffer)) throw new IllegalArgumentException("Buffer is not a CUDA buffer");
+
+        try {
             int res = (int) CUDA_MEMCPY_DTOD_ASYNC.invoke(buffer.handle, handle, size, stream.handle());
             if (res != 0) throw new RuntimeException("cuMemcpyDtoD failed: " + res);
 
@@ -128,16 +129,19 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     @Override
-    public void free() {
-        try {
-            this.state = BufferState.PENDING_FREE;
+    public MemoryState state() {
+        return state;
+    }
 
-            try {
-                int res = (int) CUDA_MEM_FREE.invoke(handle);
-                if (res != 0) throw new RuntimeException("cuMemFree failed: " + res);
-            } finally {
-                this.state = BufferState.FREE;
-            }
+    @Override
+    public void free() {
+        if (!isAlive()) return;
+        
+        try {
+            int res = (int) CUDA_MEM_FREE.invoke(handle);
+            if (res != 0) throw new RuntimeException("cuMemFree failed: " + res);
+
+            state = MemoryState.FREE;
         } catch (Throwable e) {
             throw new SiliconException("free() failed", e);
         }
@@ -145,10 +149,8 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     @Override
     public void get(byte[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
-
+        ensureAlive();
+        
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment host = arena.allocate(ValueLayout.JAVA_BYTE, data.length);
@@ -164,9 +166,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     @Override
     public void get(double[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -183,9 +183,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     @Override
     public void get(float[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -202,9 +200,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     @Override
     public void get(long[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -221,9 +217,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     @Override
     public void get(int[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -240,9 +234,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     @Override
     public void get(short[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -264,9 +256,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     // ========================= COPY TO DEVICE =========================
     public void copyToDevice(byte[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -280,9 +270,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDevice(double[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -296,9 +284,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDevice(float[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -312,9 +298,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDevice(long[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -328,9 +312,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDevice(int[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -344,9 +326,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDevice(short[] data) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -361,10 +341,9 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
 
     // ========================= ASYNC COPY TO DEVICE =========================
     public void copyToDeviceAsync(byte[] data, CudaStream stream) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
+        // TODO: fix arena lifetime issue
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment host = arena.allocateFrom(ValueLayout.JAVA_BYTE, data);
@@ -377,9 +356,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDeviceAsync(double[] data, CudaStream stream) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -393,9 +370,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDeviceAsync(float[] data, CudaStream stream) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -409,9 +384,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDeviceAsync(long[] data, CudaStream stream) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -425,9 +398,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDeviceAsync(int[] data, CudaStream stream) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -441,9 +412,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
     }
 
     public void copyToDeviceAsync(short[] data, CudaStream stream) {
-        if (state != BufferState.ALIVE) {
-            throw new IllegalStateException("Buffer is not ALIVE! Current buffer state: " + state);
-        }
+        ensureAlive();
 
         long size = bytesOf(data);
         try (Arena arena = Arena.ofConfined()) {
@@ -456,7 +425,7 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
         }
     }
 
-    public long getNativePointer() {
+    public long nativePointer() {
         try {
             return (long) CUDA_BUFFER_PTR.invoke(handle);
         } catch (Throwable e) {
@@ -464,19 +433,21 @@ public class CudaBuffer implements CudaObject, ComputeBuffer {
         }
     }
 
-    public CudaContext getContext() {
+    public CudaContext context() {
         return context;
     }
 
-    public long getSize() {
+    public long size() {
         return size;
     }
 
     @Override
     public String toString() {
-        return "CudaBuffer[" +
-            "context=" + context + ", " +
-            "handle=" + handle + ", " +
-            "size=" + size + ']';
+        return "CudaBuffer{" +
+            "context=" + context +
+            ", handle=" + handle +
+            ", size=" + size +
+            ", state=" + state +
+            '}';
     }
 }

@@ -1,7 +1,6 @@
 package org.silicon.memory;
 
-public enum BufferState {
+public enum MemoryState {
     ALIVE,
-    PENDING_FREE,
     FREE
 }
