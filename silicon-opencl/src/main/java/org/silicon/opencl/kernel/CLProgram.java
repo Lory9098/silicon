@@ -7,7 +7,7 @@ import org.silicon.kernel.ComputeModule;
 
 import java.nio.IntBuffer;
 
-public record CLProgram(long handle) implements ComputeModule {
+public record CLProgram(long handle, long device) implements ComputeModule {
     
     @Override
     public ComputeFunction getFunction(String name) {
@@ -17,7 +17,7 @@ public record CLProgram(long handle) implements ComputeModule {
             long kernel = CL10.clCreateKernel(handle, name, result);
             if (result.get(0) != CL10.CL_SUCCESS) throw new RuntimeException("clCreateKernel failed: " + result.get(0));
             
-            return new CLKernel(kernel);
+            return new CLKernel(kernel, device);
         }
     }
 }

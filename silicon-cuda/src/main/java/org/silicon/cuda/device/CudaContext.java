@@ -84,10 +84,10 @@ public record CudaContext(MemorySegment handle, CudaDevice device) implements Cu
             MemorySegment ptr = (MemorySegment) CUDA_STREAM_CREATE.invoke();
 
             if (ptr == null || ptr.address() == 0) {
-                throw new RuntimeException("cuStreamCreate failed!");
+                throw new RuntimeException("cuStreamCreate failed");
             }
 
-            return new CudaStream(ptr, arena);
+            return new CudaStream(ptr);
         } catch (Throwable e) {
             throw new SiliconException("createQueue() failed", e);
         }
@@ -96,7 +96,7 @@ public record CudaContext(MemorySegment handle, CudaDevice device) implements Cu
     @Override
     public CudaModule loadModule(Path path) {
         if (!new File(path.toString()).exists()) {
-            throw new IllegalArgumentException(path + " does not exist!");
+            throw new IllegalArgumentException(path + " does not exist");
         }
 
         try (Arena arena = Arena.ofConfined()) {
@@ -131,7 +131,7 @@ public record CudaContext(MemorySegment handle, CudaDevice device) implements Cu
 
     @Override
     public CudaModule loadModule(String source) {
-        throw new UnsupportedOperationException("JIT kernel compilation is not supported yet!");
+        throw new UnsupportedOperationException("JIT kernel compilation is not supported yet");
     }
 
     @Override

@@ -1,5 +1,6 @@
 package org.silicon.device;
 
+import org.silicon.BitUtils;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.memory.Freeable;
 
@@ -15,7 +16,7 @@ public interface ComputeBuffer extends Freeable {
     void get(byte[] data);
 
     void get(double[] data);
-
+    
     void get(float[] data);
 
     void get(long[] data);
@@ -23,4 +24,13 @@ public interface ComputeBuffer extends Freeable {
     void get(int[] data);
 
     void get(short[] data);
+    
+    default void getHalf(float[] data) {
+        short[] tmp = new short[data.length];
+        get(tmp);
+        
+        for (int i = 0; i < data.length; i++) {
+            data[i] = BitUtils.halfToFloat(tmp[i]);
+        }
+    }
 }

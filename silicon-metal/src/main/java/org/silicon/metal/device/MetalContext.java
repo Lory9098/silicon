@@ -99,7 +99,7 @@ public record MetalContext(MetalDevice device) implements MetalObject, ComputeCo
             MemorySegment ptr = (MemorySegment) METAL_NEW_BUFFER.invokeExact(device.handle(), size);
             
             if (ptr == null || ptr.address() == 0) {
-                throw new RuntimeException("metalMakeBuffer failed!");
+                throw new RuntimeException("metalMakeBuffer failed");
             }
             
             return new MetalBuffer(ptr, this, size);

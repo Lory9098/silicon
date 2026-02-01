@@ -22,7 +22,19 @@ public record CudaDevice(MemorySegment handle, int index) implements CudaObject,
         "cuda_create_context",
         FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
     );
-
+    public static final MethodHandle CUDA_DEVICE_MEMORY_SIZE = CudaObject.find(
+        "cuda_device_memory_size",
+        FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
+    );
+    public static final MethodHandle CUDA_DEVICE_SUPPORTS = CudaObject.find(
+        "cuda_device_supports",
+        FunctionDescriptor.of(
+            ValueLayout.JAVA_BOOLEAN,
+            ValueLayout.ADDRESS,
+            ValueLayout.JAVA_INT
+        )
+    );
+    
     @Override
     public CudaContext createContext() {
         try {
@@ -50,16 +62,24 @@ public record CudaDevice(MemorySegment handle, int index) implements CudaObject,
 
     @Override
     public String vendor() {
-        return ""; // TODO
+        return "NVIDIA";
     }
-
+    
     @Override
     public long memorySize() {
-        return 0; // TODO
+        try {
+            return (long) CUDA_DEVICE_MEMORY_SIZE.invokeExact(handle);
+        } catch (Throwable e) {
+            throw new SiliconException("memorySize() failed", e);
+        }
     }
-
+    
     @Override
     public boolean supports(DeviceFeature feature) {
-        return false; // TODO
+        try {
+            return (boolean) CUDA_DEVICE_SUPPORTS.invokeExact(handle, feature.ordinal());
+        } catch (Throwable e) {
+            throw new SiliconException("supports(" + feature + ") failed", e);
+        }
     }
 }

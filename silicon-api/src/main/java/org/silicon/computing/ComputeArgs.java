@@ -19,7 +19,7 @@ public class ComputeArgs {
             if (!(arg instanceof ComputeBuffer buffer)) continue;
             
             if (!buffer.isAlive()) {
-                throw new IllegalArgumentException("Buffer at %s is not alive!".formatted(i));
+                throw new IllegalArgumentException("Buffer at %s is not alive".formatted(i));
             }
         }
     }
@@ -37,7 +37,7 @@ public class ComputeArgs {
     }
 
     public ComputeArgs buffer(ComputeBuffer buffer) {
-        if (!buffer.isAlive()) throw new IllegalArgumentException("Buffer is not alive!");
+        if (!buffer.isAlive()) throw new IllegalArgumentException("Buffer is not alive");
 
         args.add(buffer);
         return this;

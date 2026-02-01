@@ -8,7 +8,6 @@ import org.silicon.cuda.CudaObject;
 import org.silicon.cuda.device.CudaBuffer;
 import org.silicon.cuda.device.CudaPointer;
 import org.silicon.cuda.kernel.CudaFunction;
-import org.silicon.device.ComputeArena;
 import org.silicon.device.ComputeBuffer;
 import org.silicon.kernel.ComputeFunction;
 import org.silicon.memory.Freeable;
@@ -19,6 +18,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public final class CudaStream implements CudaObject, ComputeQueue, Freeable {
@@ -45,12 +45,10 @@ public final class CudaStream implements CudaObject, ComputeQueue, Freeable {
     );
 
     private final MemorySegment handle;
-    private final ComputeArena arena;
     private MemoryState state;
 
-    public CudaStream(MemorySegment handle, ComputeArena arena) {
+    public CudaStream(MemorySegment handle) {
         this.handle = handle;
-        this.arena = arena;
         this.state = MemoryState.ALIVE;
     }
 
@@ -59,14 +57,23 @@ public final class CudaStream implements CudaObject, ComputeQueue, Freeable {
         ensureAlive();
 
         if (!(function instanceof CudaFunction(MemorySegment funcHandle))) {
-            throw new IllegalArgumentException("Compute function is not an CUDA stream!");
+            throw new IllegalArgumentException("Compute function is not an CUDA kernel");
         }
-
-        if (groupSize == null) groupSize = new ComputeSize(128, 1, 1); // TODO: better handling
-
-        int gridX = globalSize.x() / groupSize.x();
-        int gridY = globalSize.y() / groupSize.y();
-        int gridZ = globalSize.z() / groupSize.z();
+        
+        Objects.requireNonNull(globalSize, "Global size must not be null");
+        Objects.requireNonNull(groupSize, "Group size must not be null");
+        
+        if (groupSize.total() <= 0) {
+            throw new IllegalArgumentException("Invalid group size");
+        }
+        
+        int localX = Math.min(globalSize.x(), groupSize.x());
+        int localY = Math.min(globalSize.y(), groupSize.y());
+        int localZ = Math.min(globalSize.z(), groupSize.z());
+        
+        int gridX = globalSize.x() / localX;
+        int gridY = globalSize.y() / localY;
+        int gridZ = globalSize.z() / localZ;
 
         List<Object> computeArgs = args.getArgs();
         CudaPointer[] pointers = new CudaPointer[computeArgs.size()];
@@ -139,8 +146,7 @@ public final class CudaStream implements CudaObject, ComputeQueue, Freeable {
         try {
             int res = (int) CUDA_STREAM_DESTROY.invoke(handle);
             if (res != 0) throw new RuntimeException("cuStreamDestroy failed: " + res);
-
-            CUDA_RELEASE_OBJECT.invokeExact(handle());
+            
             state = MemoryState.FREE;
         } catch (Throwable e) {
             throw new SiliconException("free() failed", e);

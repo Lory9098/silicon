@@ -19,6 +19,7 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public final class MetalCommandQueue implements MetalObject, ComputeQueue, Freeable {
@@ -52,7 +53,11 @@ public final class MetalCommandQueue implements MetalObject, ComputeQueue, Freea
         ComputeSize groupSize,
         ComputeArgs args
     ) {
-        MetalCommandBuffer commandBuffer = dispatchRaw((MetalFunction) function, globalSize, groupSize, args);
+        if (!(function instanceof MetalFunction metalFunction)) {
+            throw new IllegalArgumentException("Compute function is not a Metal function");
+        }
+        
+        MetalCommandBuffer commandBuffer = dispatchRaw(metalFunction, globalSize, groupSize, args);
         CompletableFuture<Void> callback = new CompletableFuture<>();
 
         Thread.startVirtualThread(() -> {
@@ -73,9 +78,13 @@ public final class MetalCommandQueue implements MetalObject, ComputeQueue, Freea
         MetalPipeline pipeline = function.pipeline();
 
         MetalCommandBuffer commandBuffer = makeCommandBuffer();
-
-        if (globalSize == null) throw new IllegalArgumentException("Global size cannot be null!");
-        if (groupSize == null) throw new IllegalArgumentException("Group size cannot be null!");
+        
+        Objects.requireNonNull(globalSize, "Global size must not be null");
+        Objects.requireNonNull(groupSize, "Group size must not be null");
+        
+        if (groupSize.total() <= 0) {
+            throw new IllegalArgumentException("Invalid group size");
+        }
 
         try (MetalEncoder encoder = commandBuffer.makeEncoder(pipeline)) {
             setArgs(args, encoder);
@@ -127,7 +136,7 @@ public final class MetalCommandQueue implements MetalObject, ComputeQueue, Freea
             MemorySegment ptr = (MemorySegment) METAL_CREATE_COMMAND_BUFFER.invokeExact(handle);
             
             if (ptr == null || ptr.address() == 0) {
-                throw new RuntimeException("metalMakeCommandBuffer failed!");
+                throw new RuntimeException("metalMakeCommandBuffer failed");
             }
             
             return new MetalCommandBuffer(ptr);

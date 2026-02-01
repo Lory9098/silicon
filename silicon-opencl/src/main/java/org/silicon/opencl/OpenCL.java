@@ -69,9 +69,9 @@ public class OpenCL implements ComputeBackend {
     public ComputeDevice createDevice(int index) {
         int deviceCount = deviceCount();
         
-        if (index < 0) throw new IllegalArgumentException("Device index must be greater than 0!");
+        if (index < 0) throw new IllegalArgumentException("Device index must be greater than 0");
         if (index >= deviceCount) {
-            throw new IllegalArgumentException("Specified device index (" + index + ") but only " + deviceCount + " devices available!");
+            throw new IllegalArgumentException("Specified device index (" + index + ") but only " + deviceCount + " devices available");
         }
         
         try (MemoryStack stack = MemoryStack.stackPush()) {

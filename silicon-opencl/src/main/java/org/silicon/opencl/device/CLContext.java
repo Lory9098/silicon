@@ -54,7 +54,7 @@ public record CLContext(long handle, long device) implements ComputeContext {
             long queue = CL10.clCreateCommandQueue(handle, device, 0, result);
             if (result.get(0) != CL10.CL_SUCCESS) throw new RuntimeException("clCreateCommandQueue failed: " + result.get(0));
 
-            return new CLCommandQueue(queue, arena);
+            return new CLCommandQueue(queue);
         }
     }
 
@@ -78,7 +78,7 @@ public record CLContext(long handle, long device) implements ComputeContext {
             IntBuffer result = stack.mallocInt(1);
             long program = CL10.clCreateProgramWithSource(handle, source, result);
             
-            if (program == 0L) throw new RuntimeException("clCreateProgramWithSource returned null!");
+            if (program == 0L) throw new RuntimeException("clCreateProgramWithSource returned null");
             if (result.get(0) != CL10.CL_SUCCESS) {
                 throw new RuntimeException("clCreateProgramWithSource failed: " + result.get(0));
             }
@@ -86,13 +86,13 @@ public record CLContext(long handle, long device) implements ComputeContext {
             int buildErr = CL10.clBuildProgram(program, device, "", null, 0);
             if (buildErr != CL10.CL_SUCCESS) throw new RuntimeException("clBuildProgram failed: " + buildErr);
             
-            return new CLProgram(program);
+            return new CLProgram(program, device);
         }
     }
     
     @Override
     public CLBuffer allocateBytes(long size) {
-        if (size < 0) throw new IllegalArgumentException("Allocation size must be positive!");
+        if (size < 0) throw new IllegalArgumentException("Allocation size must be positive");
         try (MemoryStack stack = MemoryStack.stackPush()) {
             IntBuffer err = stack.mallocInt(1);
             

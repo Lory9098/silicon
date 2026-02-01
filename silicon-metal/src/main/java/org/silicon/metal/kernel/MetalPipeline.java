@@ -20,7 +20,7 @@ public record MetalPipeline(MemorySegment handle) implements MetalObject {
             MemorySegment ptr = (MemorySegment) METAL_MAKE_PIPELINE.invokeExact(function.handle());
 
             if (ptr == null || ptr.address() == 0) {
-                throw new IllegalArgumentException("metalMakePipeline failed!");
+                throw new IllegalArgumentException("metalMakePipeline failed");
             }
 
             return new MetalPipeline(ptr);

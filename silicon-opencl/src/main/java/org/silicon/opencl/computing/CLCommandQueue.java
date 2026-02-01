@@ -5,36 +5,37 @@ import org.lwjgl.opencl.CL10;
 import org.lwjgl.system.MemoryStack;
 import org.silicon.SiliconException;
 import org.silicon.computing.ComputeArgs;
-import org.silicon.computing.ComputeEvent;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.computing.ComputeSize;
-import org.silicon.device.ComputeArena;
 import org.silicon.kernel.ComputeFunction;
 import org.silicon.memory.MemoryState;
 import org.silicon.opencl.device.CLBuffer;
+import org.silicon.opencl.device.CLDevice;
 import org.silicon.opencl.kernel.CLKernel;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public final class CLCommandQueue implements ComputeQueue {
 
     private final long handle;
-    private final ComputeArena arena;
     private MemoryState state;
 
-    public CLCommandQueue(long handle, ComputeArena arena) {
+    public CLCommandQueue(long handle) {
         this.handle = handle;
-        this.arena = arena;
         this.state = MemoryState.ALIVE;
     }
 
     private PointerBuffer toBuffer(ComputeSize size, MemoryStack stack) {
         int dim = size.workDim();
+        
         PointerBuffer buf = stack.mallocPointer(dim);
         buf.put(0, size.x());
+        
         if (dim > 1) buf.put(1, size.y());
         if (dim > 2) buf.put(2, size.z());
+        
         return buf;
     }
 
@@ -45,18 +46,24 @@ public final class CLCommandQueue implements ComputeQueue {
         ComputeSize groupSize,
         ComputeArgs args
     ) {
-        if (!(function instanceof CLKernel(long kernelHandle))) {
-            throw new IllegalArgumentException("Compute function is not an OpenCL kernel!");
+        if (!(function instanceof CLKernel(long kernelHandle, long device))) {
+            throw new IllegalArgumentException("Compute function is not an OpenCL kernel");
+        }
+        
+        Objects.requireNonNull(globalSize, "Global size must not be null");
+        Objects.requireNonNull(groupSize, "Group size must not be null");
+        
+        if (groupSize.total() <= 0) {
+            throw new IllegalArgumentException("Invalid group size");
         }
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             setArgs(args, kernelHandle, stack);
-
-            ComputeSize fixedLocal = fixLocalSize(globalSize, groupSize);
-            ComputeSize fixedGlobal = fixGlobalSize(globalSize, fixedLocal);
+            
+            ComputeSize fixedGlobal = fixGlobalSize(globalSize, groupSize);
 
             PointerBuffer globalBuf = toBuffer(fixedGlobal, stack);
-            PointerBuffer localBuf = fixedLocal != null ? toBuffer(fixedLocal, stack) : null;
+            PointerBuffer localBuf = groupSize != null ? toBuffer(groupSize, stack) : null;
 
             int err = CL10.clEnqueueNDRangeKernel(
                 handle,
@@ -79,21 +86,23 @@ public final class CLCommandQueue implements ComputeQueue {
         ComputeSize groupSize,
         ComputeArgs args
     ) {
-        if (!(function instanceof CLKernel(long kernelHandle))) {
-            throw new IllegalArgumentException("Compute function is not an OpenCL kernel!");
+        if (!(function instanceof CLKernel(long kernelHandle, long device))) {
+            throw new IllegalArgumentException("Compute function is not an OpenCL kernel");
         }
-
+        
+        Objects.requireNonNull(globalSize, "Global size must not be null");
+        Objects.requireNonNull(groupSize, "Group size must not be null");
+        
+        if (groupSize.total() <= 0) {
+            throw new IllegalArgumentException("Invalid group size");
+        }
         try (MemoryStack stack = MemoryStack.stackPush()) {
             setArgs(args, kernelHandle, stack);
-
-            if (globalSize == null) throw new IllegalArgumentException("Global size cannot be null!");
-            if (groupSize == null) throw new IllegalArgumentException("Group size cannot be null!");
-
-            ComputeSize fixedLocal = fixLocalSize(globalSize, groupSize);
-            ComputeSize fixedGlobal = fixGlobalSize(globalSize, fixedLocal);
+            
+            ComputeSize fixedGlobal = fixGlobalSize(globalSize, groupSize);
 
             PointerBuffer globalBuf = toBuffer(fixedGlobal, stack);
-            PointerBuffer localBuf = fixedLocal != null ? toBuffer(fixedLocal, stack) : null;
+            PointerBuffer localBuf = groupSize != null ? toBuffer(groupSize, stack) : null;
 
             PointerBuffer eventPtr = stack.mallocPointer(1);
             int err = CL10.clEnqueueNDRangeKernel(
@@ -128,10 +137,7 @@ public final class CLCommandQueue implements ComputeQueue {
 
     @Override
     public void awaitCompletion() {
-        if (state != MemoryState.ALIVE) {
-            throw new IllegalStateException("Queue is not ALIVE! Current queue state: " + state);
-        }
-
+        ensureAlive();
         CL10.clFinish(handle);
     }
 
@@ -168,27 +174,21 @@ public final class CLCommandQueue implements ComputeQueue {
             }
         }
     }
-
+    
     private ComputeSize fixGlobalSize(ComputeSize global, ComputeSize local) {
         if (local == null) return global;
-
-        int x = global.x();
-        int lx = local.x();
-
-        if (lx > x) lx = x;
-
-        int fixedX = ((x + lx - 1) / lx) * lx;
-
-        return new ComputeSize(fixedX, 1, 1);
+        
+        int dim = global.workDim();
+        
+        int gx = roundUp(global.x(), local.x());
+        int gy = dim > 1 ? roundUp(global.y(), local.y()) : 1;
+        int gz = dim > 2 ? roundUp(global.z(), local.z()) : 1;
+        
+        return new ComputeSize(gx, gy, gz);
     }
-
-    private ComputeSize fixLocalSize(ComputeSize global, ComputeSize local) {
-        if (local == null) return null;
-
-        int lx = local.x();
-        if (lx > global.x()) lx = global.x();
-
-        return new ComputeSize(lx, 1, 1);
+    
+    private static int roundUp(int global, int local) {
+        return ((global + local - 1) / local) * local;
     }
 
     public long handle() {

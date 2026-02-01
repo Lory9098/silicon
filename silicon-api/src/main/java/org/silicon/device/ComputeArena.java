@@ -1,5 +1,6 @@
 package org.silicon.device;
 
+import org.silicon.BitUtils;
 import org.silicon.computing.ComputeQueue;
 import org.silicon.memory.Freeable;
 
@@ -99,7 +100,18 @@ public class ComputeArena implements AutoCloseable {
     public ComputeBuffer allocateArray(double[] data, ComputeQueue queue) {
         return allocateArray(data, data.length * 8L, queue);
     }
-
+    
+    public ComputeBuffer allocateHalf(float[] data) {
+        short[] result = new short[data.length];
+        
+        for (int i = 0; i < data.length; i++) {
+            short h = BitUtils.floatToHalf(data[i]);
+            result[i] = h;
+        }
+        
+        return allocateArray(result);
+    }
+    
     public ComputeBuffer allocateArray(float[] data) {
         return allocateArray(data, data.length * 4L);
     }

@@ -75,7 +75,7 @@ public class CUDA implements ComputeBackend {
     @Override
     public CudaDevice createDevice(int index) {
         if (CUDA_CREATE_SYSTEM_DEVICE == null || !isAvailable()) {
-            throw new IllegalStateException("This backend is not available on this platform!");
+            throw new IllegalStateException("This backend is not available on this platform");
         }
         
         int count = deviceCount();
@@ -88,7 +88,7 @@ public class CUDA implements ComputeBackend {
             MemorySegment ptr = (MemorySegment) CUDA_CREATE_SYSTEM_DEVICE.invokeExact(index);
             
             if (ptr == null || ptr.address() == 0) {
-                throw new RuntimeException("cuDeviceGet failed!");
+                throw new RuntimeException("cuDeviceGet failed");
             }
             
             return new CudaDevice(ptr, index);

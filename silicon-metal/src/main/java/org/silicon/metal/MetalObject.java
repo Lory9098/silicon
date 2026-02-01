@@ -16,7 +16,7 @@ public interface MetalObject {
     static MethodHandle find(String callName, FunctionDescriptor descriptor) {
         Optional<MemorySegment> call = LOOKUP.find(callName);
         
-        if (call.isEmpty()) throw new NullPointerException("%s is not present!".formatted(callName));
+        if (call.isEmpty()) throw new NullPointerException("%s is not present".formatted(callName));
         
         return LINKER.downcallHandle(call.get(), descriptor);
     }

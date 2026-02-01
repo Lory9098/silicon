@@ -1,9 +1,7 @@
 package org.silicon;
 
-import org.silicon.computing.ComputeArgs;
-import org.silicon.computing.ComputeEvent;
-import org.silicon.computing.ComputeQueue;
-import org.silicon.computing.ComputeSize;
+import org.silicon.backend.BackendType;
+import org.silicon.computing.*;
 import org.silicon.device.*;
 import org.silicon.kernel.ComputeFunction;
 import org.silicon.kernel.ComputeModule;
@@ -13,50 +11,108 @@ import java.util.Arrays;
 
 public class ComputeTest {
     
+    private static final int N = 1_073_741_824;
+    
     public static void main(String[] args) {
-        int N = 512 * 512 * 512;
-
-        System.out.println("Chosen backend " + Silicon.backend().name());
+        Silicon.chooseBackend(BackendType.CUDA);
+        System.out.println("Chosen backend: " + Silicon.backend().name());
         
         ComputeDevice device = Silicon.createDevice();
         ComputeContext context = device.createContext();
-
-        System.out.println("Device name: " + device.name());
-        System.out.println("Vendor: " + device.vendor());
-
+        
+        printDeviceInfo(device);
+        
         SlangCompiler compiler = new SlangCompiler(context);
-
-        ComputeModule module = compiler.compileFromResource("vector_add.slang");
+        
+        if (device.supports(DeviceFeature.FP16)) {
+            runFp16VectorAdd(context, compiler);
+        } else {
+            System.out.println("FP16 not supported on this device");
+        }
+        
+        runFp32VectorAdd(context, compiler);
+    }
+    
+    private static void runFp16VectorAdd(ComputeContext context, SlangCompiler compiler) {
+        System.out.println("\n=== FP16 vector add ===");
+        
+        ComputeModule module = compiler.compileFromResource("vector_add_fp16.slang");
         ComputeFunction function = module.getFunction("add");
-
-        float[] dataA = generateData(N);
-        float[] dataB = generateData(N);
-
+        
+        float[] aHost = generateData();
+        float[] bHost = generateData();
+        
         try (ComputeArena arena = context.createArena()) {
-            ComputeBuffer a = arena.allocateArray(dataA);
-            ComputeBuffer b = arena.allocateArray(dataB);
-            ComputeBuffer c = arena.allocateBytes(N * 4L);
-
-            ComputeArgs kernelArgs = ComputeArgs.of(a, b, c, N);
-
-            ComputeSize globalSize = new ComputeSize(N, 1, 1);
-            ComputeSize groupSize = new ComputeSize(16, 1, 1);
-
-            ComputeQueue queue = arena.createQueue();
-
-            queue.dispatch(function, globalSize, groupSize, kernelArgs);
-            queue.awaitCompletion();
-
-            float[] result = new float[64];
-            c.get(result);
-            System.out.println(Arrays.toString(result));
-            System.out.println("resulted");
+            ComputeBuffer a = arena.allocateHalf(aHost);
+            ComputeBuffer b = arena.allocateHalf(bHost);
+            ComputeBuffer c = arena.allocateBytes((long) N * 2); // half = 2 byte
+            
+            dispatch(function, arena, a, b, c);
+            
+            float[] preview = new float[16];
+            c.getHalf(preview);
+            System.out.println("FP16 result preview: " + Arrays.toString(preview));
         }
     }
     
-    private static float[] generateData(int length) {
-        float[] data = new float[length];
-        for (int i = 0; i < length; i++) data[i] = i;
+    private static void runFp32VectorAdd(ComputeContext context, SlangCompiler compiler) {
+        System.out.println("\n=== FP32 vector add ===");
+        
+        ComputeModule module = compiler.compileFromResource("vector_add_fp32.slang");
+        ComputeFunction function = module.getFunction("add");
+        
+        float[] aHost = generateData();
+        float[] bHost = generateData();
+        
+        try (ComputeArena arena = context.createArena()) {
+            ComputeBuffer a = arena.allocateArray(aHost);
+            ComputeBuffer b = arena.allocateArray(bHost);
+            ComputeBuffer c = arena.allocateArray(new float[N]);
+            
+            dispatch(function, arena, a, b, c);
+            
+            float[] preview = new float[16];
+            c.get(preview);
+            System.out.println("FP32 result preview: " + Arrays.toString(preview));
+        }
+    }
+    
+    private static void dispatch(
+        ComputeFunction function,
+        ComputeArena arena,
+        ComputeBuffer a,
+        ComputeBuffer b,
+        ComputeBuffer c
+    ) {
+        ComputeArgs args = ComputeArgs.of(a, b, c);
+        
+        ComputeSize globalSize = new ComputeSize(N, 1, 1);
+        ComputeSize groupSize  = new ComputeSize(function.maxWorkGroupSize(), 1, 1);
+        
+        ComputeQueue queue = arena.createQueue();
+        
+        long start = System.nanoTime();
+        queue.dispatch(function, globalSize, groupSize, args);
+        queue.awaitCompletion();
+        long end = System.nanoTime();
+        
+        System.out.printf("Execution time: %.2f ms%n", (end - start) / 1e6);
+    }
+    
+    private static void printDeviceInfo(ComputeDevice device) {
+        System.out.println("========== Device ==========");
+        System.out.println("Name:     " + device.name());
+        System.out.println("Vendor:   " + device.vendor());
+        System.out.println("Memory:   " + device.memorySize());
+        System.out.println("FP16:     " + device.supports(DeviceFeature.FP16));
+        System.out.println("FP64:     " + device.supports(DeviceFeature.FP64));
+    }
+    
+    private static float[] generateData() {
+        float[] data = new float[ComputeTest.N];
+        for (int i = 0; i < ComputeTest.N; i++) {
+            data[i] = i;
+        }
         return data;
     }
 }

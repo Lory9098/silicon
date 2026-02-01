@@ -31,7 +31,7 @@ public class CLBuffer implements ComputeBuffer {
     @Override
     public CLBuffer copyInto(ComputeBuffer other) {
         if (!(other instanceof CLBuffer buffer)) {
-            throw new IllegalArgumentException("Other buffer must be an OpenCL buffer!");
+            throw new IllegalArgumentException("Other buffer must be an OpenCL buffer");
         }
         
         CLCommandQueue queue = context.createQueue();
@@ -57,11 +57,11 @@ public class CLBuffer implements ComputeBuffer {
     @Override
     public CLBuffer copyIntoAsync(ComputeBuffer other, ComputeQueue queue) {
         if (!(other instanceof CLBuffer buffer)) {
-            throw new IllegalArgumentException("Other buffer must be an OpenCL buffer!");
+            throw new IllegalArgumentException("Other buffer must be an OpenCL buffer");
         }
         
         if (queue == null) {
-            throw new IllegalArgumentException("Queue cannot be null!");
+            throw new IllegalArgumentException("Queue cannot be null");
         }
 
         CLCommandQueue clQueue = (CLCommandQueue) queue;

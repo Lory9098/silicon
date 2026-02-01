@@ -51,13 +51,13 @@ public class Metal implements ComputeBackend {
     public MetalDevice createDevice(int index) {
         try {
             if (index != 0) {
-                throw new IllegalArgumentException("Index should be equal to 0 when using Metal!");
+                throw new IllegalArgumentException("Index should be equal to 0 when using Metal");
             }
 
             MemorySegment ptr = (MemorySegment) METAL_CREATE_SYSTEM_DEVICE.invokeExact();
             
             if (ptr == null || ptr.address() == 0) {
-                throw new RuntimeException("metalCreateSystemDevice failed!");
+                throw new RuntimeException("metalCreateSystemDevice failed");
             }
             
             return new MetalDevice(ptr);

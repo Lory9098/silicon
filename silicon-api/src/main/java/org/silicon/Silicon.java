@@ -12,7 +12,7 @@ public class Silicon {
 
     public static void chooseBackend(BackendType backendType) {
         if (backendType == null) {
-            throw new NullPointerException("Chosen backend type cannot be null!");
+            throw new NullPointerException("Chosen backend type cannot be null");
         }
         
         ServiceLoader<ComputeBackend> loader = ServiceLoader.load(ComputeBackend.class);
@@ -24,7 +24,7 @@ public class Silicon {
             return;
         }
         
-        throw new IllegalStateException("No backend with name '" + backendType.formalName() + "' was found on this system!");
+        throw new IllegalStateException("No backend with name '" + backendType.formalName() + "' was found on this system");
     }
     
     private static ComputeBackend loadBackend() {
@@ -45,7 +45,7 @@ public class Silicon {
         }
         
         if (best == null) {
-            throw new IllegalStateException("No compute backend available on this system!");
+            throw new IllegalStateException("No compute backend available on this system");
         }
         
         return best;

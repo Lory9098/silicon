@@ -48,7 +48,7 @@ public class MetalBuffer implements MetalObject, ComputeBuffer {
         }
 
         if (!(other instanceof MetalBuffer dst)) {
-            throw new IllegalArgumentException("Both buffers must be Metal buffers!");
+            throw new IllegalArgumentException("Both buffers must be Metal buffers");
         }
 
         MemorySegment srcSeg = getContents().reinterpret(size);
