@@ -1,6 +1,5 @@
 package org.silicon;
 
-import org.silicon.backend.BackendType;
 import org.silicon.computing.*;
 import org.silicon.device.*;
 import org.silicon.kernel.ComputeFunction;
@@ -14,7 +13,9 @@ public class ComputeTest {
     private static final int N = 1_073_741_824;
     
     public static void main(String[] args) {
-        Silicon.chooseBackend(BackendType.CUDA);
+        System.err.println("Warning: This test need a big amount of RAM!");
+        System.err.println("If the JVM crashes make sure to change -Xmx JVM argument");
+        
         System.out.println("Chosen backend: " + Silicon.backend().name());
         
         ComputeDevice device = Silicon.createDevice();
