@@ -17,9 +17,6 @@ void matmul()
     MatA a = MatA.Load<CoopMatMatrixLayout::RowMajor>(A, 0, stride);
     MatB b = MatB.Load<CoopMatMatrixLayout::RowMajor>(B, 0, stride);
 
-    MatAcc acc = MatAcc(0.0f);
-
-    acc = coopMatMulAdd<float, false>(a, b, acc);
-
+    MatAcc acc = coopMatMulAdd<float, false>(a, b, MatAcc(0.0f));
     acc.Store<CoopMatMatrixLayout::RowMajor>(C, 0, stride);
 }

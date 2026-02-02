@@ -8,6 +8,13 @@ final class CudaStreamWrapper {
     }
 }
 
+final class CudaEventWrapper {
+    let event: CUevent
+    init(event: CUevent) {
+        self.event = event
+    }
+}
+
 @_cdecl("cuda_stream_create")
 public func cuda_stream_create() -> UnsafeMutableRawPointer? {
     var stream: CUstream?
@@ -35,5 +42,54 @@ public func cuda_stream_sync(ptr: UnsafeMutableRawPointer) -> Int32 {
 public func cuda_stream_query(ptr: UnsafeMutableRawPointer) -> Int32 {
     let wrapper: CudaStreamWrapper = pointerToObject(ptr)
     let result: CUresult = cuStreamQuery(wrapper.stream)
+    return Int32(result.rawValue)
+}
+
+@_cdecl("cuda_event_create")
+public func cuda_event_create(flags: Int32) -> UnsafeMutableRawPointer? {
+    var event: CUevent?
+    let result = cuEventCreate(&event, flags)
+
+    if result != CUDA_SUCCESS || event == nil { return nil }
+
+    let wrapper = CudaEventWrapper(event: event!)
+    return objectToPointer(wrapper)
+}
+
+@_cdecl("cuda_event_record")
+public func cuda_event_record(
+    eventPtr: UnsafeMutableRawPointer,
+    streamPtr: UnsafeMutableRawPointer
+) -> Int32 {
+    let eventWrap = pointerToObject(eventPtr)
+    let streamWrap = pointerToObject(streamPtr)
+
+    let result = cuEventRecord(eventWrap.event, streamWrap.stream)
+    return Int32(result.rawValue)
+}
+
+
+@_cdecl("cuda_event_synchronize")
+public func cuda_event_synchronize(
+    eventPtr: UnsafeMutableRawPointer
+) -> Int32 {
+    let eventWrap = pointerToObject(eventPtr)
+    let result = cuEventSynchronize(eventWrap.event)
+    return Int32(result.rawValue)
+}
+
+@_cdecl("cuda_event_query")
+public func cuda_event_query(
+    eventPtr: UnsafeMutableRawPointer
+) -> Int32 {
+    let eventWrap: CudaEventWrapper = pointerToObject(eventPtr)
+    let result = cuEventQuery(eventWrap.event)
+    return Int32(result.rawValue)
+}
+
+@_cdecl("cuda_event_destroy")
+public func cuda_event_destroy(ptr: UnsafeMutableRawPointer) -> Int32 {
+    let wrapper = pointerToObject(ptr)
+    let result = cuEventDestroy(wrapper.event)
     return Int32(result.rawValue)
 }

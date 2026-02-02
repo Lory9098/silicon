@@ -2,12 +2,11 @@ package org.silicon.opencl.device;
 
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.system.MemoryStack;
-import org.silicon.SiliconException;
-import org.silicon.backend.BackendType;
-import org.silicon.computing.ComputeQueue;
-import org.silicon.device.ComputeArena;
-import org.silicon.device.ComputeContext;
-import org.silicon.kernel.ComputeModule;
+import org.silicon.api.SiliconException;
+import org.silicon.api.backend.BackendType;
+import org.silicon.api.device.ComputeArena;
+import org.silicon.api.device.ComputeContext;
+import org.silicon.api.function.ComputeModule;
 import org.silicon.opencl.computing.CLCommandQueue;
 import org.silicon.opencl.kernel.CLProgram;
 
@@ -29,7 +28,7 @@ public record CLContext(long handle, long device) implements ComputeContext {
         
         if (err != CL10.CL_SUCCESS) throw new IllegalStateException("clEnqueueWriteBuffer failed: " + err);
         
-        clQueue.awaitCompletion();
+        clQueue.await();
         clQueue.free();
     }
     

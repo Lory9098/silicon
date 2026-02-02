@@ -3,14 +3,13 @@ package org.silicon.opencl.computing;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.system.MemoryStack;
-import org.silicon.SiliconException;
-import org.silicon.computing.ComputeArgs;
-import org.silicon.computing.ComputeQueue;
-import org.silicon.computing.ComputeSize;
-import org.silicon.kernel.ComputeFunction;
-import org.silicon.memory.MemoryState;
+import org.silicon.api.SiliconException;
+import org.silicon.api.kernel.ComputeArgs;
+import org.silicon.api.kernel.ComputeQueue;
+import org.silicon.api.kernel.ComputeSize;
+import org.silicon.api.function.ComputeFunction;
+import org.silicon.api.memory.MemoryState;
 import org.silicon.opencl.device.CLBuffer;
-import org.silicon.opencl.device.CLDevice;
 import org.silicon.opencl.kernel.CLKernel;
 
 import java.util.List;
@@ -96,6 +95,7 @@ public final class CLCommandQueue implements ComputeQueue {
         if (groupSize.total() <= 0) {
             throw new IllegalArgumentException("Invalid group size");
         }
+        
         try (MemoryStack stack = MemoryStack.stackPush()) {
             setArgs(args, kernelHandle, stack);
             
@@ -136,7 +136,7 @@ public final class CLCommandQueue implements ComputeQueue {
     }
 
     @Override
-    public void awaitCompletion() {
+    public void await() {
         ensureAlive();
         CL10.clFinish(handle);
     }

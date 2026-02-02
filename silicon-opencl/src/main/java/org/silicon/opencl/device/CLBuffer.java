@@ -1,9 +1,9 @@
 package org.silicon.opencl.device;
 
 import org.lwjgl.opencl.CL10;
-import org.silicon.memory.MemoryState;
-import org.silicon.computing.ComputeQueue;
-import org.silicon.device.ComputeBuffer;
+import org.silicon.api.memory.MemoryState;
+import org.silicon.api.kernel.ComputeQueue;
+import org.silicon.api.device.ComputeBuffer;
 import org.silicon.opencl.computing.CLCommandQueue;
 
 import java.nio.ByteBuffer;
@@ -42,7 +42,7 @@ public class CLBuffer implements ComputeBuffer {
         );
         if (res != 0) throw new RuntimeException("clEnqueueCopyBuffer failed: " + res);
         
-        queue.awaitCompletion();
+        queue.await();
         queue.free();
         
         return buffer;
@@ -95,7 +95,7 @@ public class CLBuffer implements ComputeBuffer {
         Result result = readBuffer(size);
         result.buffer().get(data);
 
-        result.queue().awaitCompletion();
+        result.queue().await();
         result.queue().free();
     }
 
@@ -106,7 +106,7 @@ public class CLBuffer implements ComputeBuffer {
         Result result = readBuffer(required);
         result.buffer().asDoubleBuffer().get(data);
 
-        result.queue().awaitCompletion();
+        result.queue().await();
         result.queue().free();
     }
 
@@ -117,7 +117,7 @@ public class CLBuffer implements ComputeBuffer {
         Result result = readBuffer(required);
         result.buffer().asFloatBuffer().get(data);
 
-        result.queue().awaitCompletion();
+        result.queue().await();
         result.queue().free();
     }
 
@@ -128,7 +128,7 @@ public class CLBuffer implements ComputeBuffer {
         Result result = readBuffer(required);
         result.buffer().asLongBuffer().get(data);
 
-        result.queue().awaitCompletion();
+        result.queue().await();
         result.queue().free();
     }
 
@@ -139,7 +139,7 @@ public class CLBuffer implements ComputeBuffer {
         Result result = readBuffer(required);
         result.buffer().asIntBuffer().get(data);
 
-        result.queue().awaitCompletion();
+        result.queue().await();
         result.queue().free();
     }
 
@@ -150,7 +150,7 @@ public class CLBuffer implements ComputeBuffer {
         Result result = readBuffer(required);
         result.buffer().asShortBuffer().get(data);
 
-        result.queue().awaitCompletion();
+        result.queue().await();
         result.queue().free();
     }
 

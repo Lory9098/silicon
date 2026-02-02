@@ -2,8 +2,8 @@ package org.silicon.opencl.kernel;
 
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.system.MemoryStack;
-import org.silicon.kernel.ComputeFunction;
-import org.silicon.kernel.ComputeModule;
+import org.silicon.api.function.ComputeFunction;
+import org.silicon.api.function.ComputeModule;
 
 import java.nio.IntBuffer;
 

@@ -3,15 +3,14 @@ package org.silicon.opencl.device;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.system.MemoryStack;
-import org.silicon.device.ComputeContext;
-import org.silicon.device.ComputeDevice;
-import org.silicon.device.DeviceFeature;
+import org.silicon.api.device.ComputeContext;
+import org.silicon.api.device.ComputeDevice;
+import org.silicon.api.device.DeviceFeature;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
 
 public record CLDevice(long handle, long platform) implements ComputeDevice {
 

@@ -1,0 +1,37 @@
+package org.silicon.metal.function;
+
+import org.silicon.api.SiliconException;
+import org.silicon.api.function.ComputeModule;
+import org.silicon.metal.MetalObject;
+
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+
+public record MetalLibrary(MemorySegment handle) implements MetalObject, ComputeModule {
+
+    public static final MethodHandle METAL_CREATE_FUNCTION = MetalObject.find(
+        "metal_create_function",
+        FunctionDescriptor.of(ValueLayout.ADDRESS, // return MTLFunction*
+            ValueLayout.ADDRESS,                  // library (MTLLibrary*)
+            ValueLayout.ADDRESS)                  // function name (char*)
+    );
+
+    @Override
+    public MetalFunction getFunction(String name) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment fnName = arena.allocateFrom(name);
+            MemorySegment fnPtr = (MemorySegment) METAL_CREATE_FUNCTION.invokeExact(handle, fnName);
+
+            if (fnPtr == null || fnPtr.address() == 0) {
+                throw new RuntimeException("Function '" + name + "' not found in library");
+            }
+
+            return new MetalFunction(fnPtr);
+        } catch (Throwable e) {
+            throw new SiliconException("create(MetalLibrary, String) failed", e);
+        }
+    }
+}

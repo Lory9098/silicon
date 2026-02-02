@@ -1,13 +1,12 @@
 package org.silicon.cuda.device;
 
-import org.silicon.SiliconException;
-import org.silicon.backend.BackendType;
-import org.silicon.computing.ComputeQueue;
+import org.silicon.api.SiliconException;
+import org.silicon.api.backend.BackendType;
 import org.silicon.cuda.CudaObject;
-import org.silicon.cuda.computing.CudaStream;
-import org.silicon.cuda.kernel.CudaModule;
-import org.silicon.device.ComputeArena;
-import org.silicon.device.ComputeContext;
+import org.silicon.cuda.kernel.CudaStream;
+import org.silicon.cuda.function.CudaModule;
+import org.silicon.api.device.ComputeArena;
+import org.silicon.api.device.ComputeContext;
 
 import java.io.File;
 import java.lang.foreign.Arena;
@@ -131,7 +130,7 @@ public record CudaContext(MemorySegment handle, CudaDevice device) implements Cu
 
     @Override
     public CudaModule loadModule(String source) {
-        throw new UnsupportedOperationException("JIT kernel compilation is not supported yet");
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override

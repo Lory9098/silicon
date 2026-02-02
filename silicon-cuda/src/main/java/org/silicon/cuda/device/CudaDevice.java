@@ -1,16 +1,14 @@
 package org.silicon.cuda.device;
 
-import org.silicon.SiliconException;
+import org.silicon.api.SiliconException;
 import org.silicon.cuda.CudaObject;
-import org.silicon.device.ComputeDevice;
-import org.silicon.device.DeviceFeature;
-import org.silicon.memory.MemoryState;
+import org.silicon.api.device.ComputeDevice;
+import org.silicon.api.device.DeviceFeature;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import java.util.Objects;
 
 public record CudaDevice(MemorySegment handle, int index) implements CudaObject, ComputeDevice {
 

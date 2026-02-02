@@ -1,10 +1,13 @@
 package org.silicon;
 
-import org.silicon.computing.*;
-import org.silicon.device.*;
-import org.silicon.kernel.ComputeFunction;
-import org.silicon.kernel.ComputeModule;
-import org.silicon.slang.SlangCompiler;
+import org.silicon.api.Silicon;
+import org.silicon.api.device.*;
+import org.silicon.api.function.ComputeFunction;
+import org.silicon.api.function.ComputeModule;
+import org.silicon.api.kernel.ComputeArgs;
+import org.silicon.api.kernel.ComputeQueue;
+import org.silicon.api.kernel.ComputeSize;
+import org.silicon.api.slang.SlangCompiler;
 
 import java.util.Arrays;
 
@@ -30,7 +33,6 @@ public class MatMul {
         SlangCompiler compiler = new SlangCompiler(context);
 
         if (device.supports(DeviceFeature.FP16)) {
-            runTensorFp16MatMul(context, compiler);
             runFp16MatMul(context, compiler);
         } else {
             System.out.println("FP16 not supported on this device");
@@ -38,7 +40,8 @@ public class MatMul {
 
         runFp32MatMul(context, compiler);
     }
-
+    
+    // Do not use: the kernel is currently broken.
     private static void runTensorFp16MatMul(ComputeContext context, SlangCompiler compiler) {
         System.out.println("\n=== FP16 Tensor MatMul ===");
         
@@ -127,7 +130,7 @@ public class MatMul {
 
         long start = System.nanoTime();
         queue.dispatch(function, globalSize, groupSize, args);
-        queue.awaitCompletion();
+        queue.await();
         long end = System.nanoTime();
 
         System.out.printf(

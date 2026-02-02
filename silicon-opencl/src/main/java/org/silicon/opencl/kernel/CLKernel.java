@@ -3,8 +3,8 @@ package org.silicon.opencl.kernel;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.system.MemoryStack;
-import org.silicon.SiliconException;
-import org.silicon.kernel.ComputeFunction;
+import org.silicon.api.SiliconException;
+import org.silicon.api.function.ComputeFunction;
 
 public record CLKernel(long handle, long device) implements ComputeFunction {
     @Override

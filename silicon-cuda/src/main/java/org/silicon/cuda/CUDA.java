@@ -1,8 +1,8 @@
 package org.silicon.cuda;
 
-import org.silicon.SiliconException;
-import org.silicon.backend.BackendType;
-import org.silicon.backend.ComputeBackend;
+import org.silicon.api.SiliconException;
+import org.silicon.api.backend.BackendType;
+import org.silicon.api.backend.ComputeBackend;
 import org.silicon.cuda.device.CudaDevice;
 
 import java.io.InputStream;

@@ -1,34 +1,28 @@
-package org.silicon.opencl.computing;
+package org.silicon.metal.kernel;
 
-import org.lwjgl.opencl.CL10;
 import org.silicon.api.kernel.ComputeEvent;
 
 import java.util.concurrent.CompletableFuture;
 
-public class CLEvent implements ComputeEvent {
+public class MetalEvent implements ComputeEvent {
 
     private final CompletableFuture<Void> callback;
-    private final long eventPtr;
+    private final MetalCommandBuffer buffer;
     
-    public CLEvent(long eventPtr) {
+    public MetalEvent(MetalCommandBuffer buffer) {
         this.callback = new CompletableFuture<>();
-        this.eventPtr = eventPtr;
+        this.buffer = buffer;
         
         Thread.startVirtualThread(() -> {
             try {
-                CL10.clWaitForEvents(eventPtr);
+                buffer.waitUntilCompleted();
                 callback.complete(null);
             } catch (Throwable t) {
                 callback.completeExceptionally(t);
             } finally {
-                CL10.clReleaseEvent(eventPtr);
+                buffer.free();
             }
         });
-    }
-
-    @Override
-    public boolean isCompleted() {
-        return callback.isDone();
     }
 
     @Override
@@ -38,6 +32,6 @@ public class CLEvent implements ComputeEvent {
     
     @Override
     public void await() {
-        CL10.clWaitForEvents(eventPtr);
+        buffer.waitUntilCompleted();
     }
 }

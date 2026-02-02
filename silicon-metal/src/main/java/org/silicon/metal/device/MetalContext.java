@@ -1,14 +1,13 @@
 package org.silicon.metal.device;
 
-import org.silicon.SiliconException;
-import org.silicon.backend.BackendType;
-import org.silicon.computing.ComputeQueue;
-import org.silicon.device.ComputeArena;
-import org.silicon.device.ComputeBuffer;
-import org.silicon.device.ComputeContext;
+import org.silicon.api.SiliconException;
+import org.silicon.api.backend.BackendType;
+import org.silicon.api.device.ComputeArena;
+import org.silicon.api.device.ComputeBuffer;
+import org.silicon.api.device.ComputeContext;
 import org.silicon.metal.MetalObject;
-import org.silicon.metal.computing.MetalCommandQueue;
-import org.silicon.metal.kernel.MetalLibrary;
+import org.silicon.metal.kernel.MetalCommandQueue;
+import org.silicon.metal.function.MetalLibrary;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;

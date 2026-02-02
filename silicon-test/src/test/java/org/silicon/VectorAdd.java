@@ -1,10 +1,13 @@
 package org.silicon;
 
-import org.silicon.computing.*;
-import org.silicon.device.*;
-import org.silicon.kernel.ComputeFunction;
-import org.silicon.kernel.ComputeModule;
-import org.silicon.slang.SlangCompiler;
+import org.silicon.api.Silicon;
+import org.silicon.api.device.*;
+import org.silicon.api.function.ComputeFunction;
+import org.silicon.api.function.ComputeModule;
+import org.silicon.api.kernel.ComputeArgs;
+import org.silicon.api.kernel.ComputeQueue;
+import org.silicon.api.kernel.ComputeSize;
+import org.silicon.api.slang.SlangCompiler;
 
 import java.util.Arrays;
 
@@ -90,7 +93,7 @@ public class VectorAdd {
         
         long start = System.nanoTime();
         queue.dispatch(function, globalSize, groupSize, args);
-        queue.awaitCompletion();
+        queue.await();
         long end = System.nanoTime();
         
         System.out.printf("Execution time: %.2f ms%n", (end - start) / 1e6);
