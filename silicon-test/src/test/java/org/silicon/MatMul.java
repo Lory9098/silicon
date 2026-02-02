@@ -10,9 +10,10 @@ import java.util.Arrays;
 
 public class MatMul {
 
-    private static final int M = 2048;
-    private static final int N = 2048;
-    private static final int K = 2048;
+    private static final int CONST = 4096;
+    private static final int M = CONST;
+    private static final int N = CONST;
+    private static final int K = CONST;
 
     private static final float[] A_HOST = generateA();
     private static final float[] B_HOST = generateB();
@@ -29,6 +30,7 @@ public class MatMul {
         SlangCompiler compiler = new SlangCompiler(context);
 
         if (device.supports(DeviceFeature.FP16)) {
+            runTensorFp16MatMul(context, compiler);
             runFp16MatMul(context, compiler);
         } else {
             System.out.println("FP16 not supported on this device");
@@ -37,6 +39,29 @@ public class MatMul {
         runFp32MatMul(context, compiler);
     }
 
+    private static void runTensorFp16MatMul(ComputeContext context, SlangCompiler compiler) {
+        System.out.println("\n=== FP16 Tensor MatMul ===");
+        
+        ComputeModule module = compiler.compileFromResource("fp16/tensor_matmul_fp16.slang");
+        ComputeFunction function = module.getFunction("matmul");
+        
+        try (ComputeArena arena = context.createArena()) {
+            ComputeBuffer A = arena.allocateArray(A_HOST);
+            ComputeBuffer B = arena.allocateArray(B_HOST);
+            ComputeBuffer C = arena.allocateBytes((long) M * N * 4);
+            
+            ComputeSize globalSize = new ComputeSize(N, M, 1);
+            ComputeSize groupSize = new ComputeSize(16, 16, 1);
+            ComputeArgs args = ComputeArgs.of(A, B, C);
+            
+            dispatchMatMul(function, arena, args, globalSize, groupSize);
+            
+            float[] preview = new float[16];
+            C.get(preview);
+            System.out.println("FP32 result preview: " + Arrays.toString(preview));
+        }
+    }
+    
     private static void runFp32MatMul(ComputeContext context, SlangCompiler compiler) {
         System.out.println("\n=== FP32 MatMul ===");
 
@@ -49,8 +74,12 @@ public class MatMul {
             ComputeBuffer C = arena.allocateBytes((long) M * N * 4);
 
             ComputeBuffer sizes = arena.allocateArray(new int[] { M, N, K });
+            
+            ComputeSize globalSize = new ComputeSize(N, M, 1);
+            ComputeSize groupSize = new ComputeSize(16, 16, 1);
+            ComputeArgs args = ComputeArgs.of(A, B, C, sizes);
 
-            dispatchMatMul(function, arena, A, B, C, sizes);
+            dispatchMatMul(function, arena, args, globalSize, groupSize);
 
             float[] preview = new float[16];
             C.get(preview);
@@ -70,8 +99,16 @@ public class MatMul {
             ComputeBuffer C = arena.allocateBytes((long) M * N * 2);
 
             ComputeBuffer sizes = arena.allocateArray(new int[] { M, N, K });
-
-            dispatchMatMul(function, arena, A, B, C, sizes);
+            
+            int TILE = 16;
+            int gx = ((N + TILE - 1) / TILE) * TILE;
+            int gy = ((M + TILE - 1) / TILE) * TILE;
+            
+            ComputeSize globalSize = new ComputeSize(gx, gy, 1);
+            ComputeSize groupSize  = new ComputeSize(TILE, TILE, 1);
+            ComputeArgs args = ComputeArgs.of(A, B, C, sizes);
+            
+            dispatchMatMul(function, arena, args, globalSize, groupSize);
 
             float[] preview = new float[16];
             C.getHalf(preview);
@@ -82,16 +119,10 @@ public class MatMul {
     private static void dispatchMatMul(
         ComputeFunction function,
         ComputeArena arena,
-        ComputeBuffer A,
-        ComputeBuffer B,
-        ComputeBuffer C,
-        ComputeBuffer sizes
+        ComputeArgs args,
+        ComputeSize globalSize,
+        ComputeSize groupSize
     ) {
-        ComputeArgs args = ComputeArgs.of(A, B, C, sizes);
-
-        ComputeSize globalSize = new ComputeSize(N, M, 1);
-        ComputeSize groupSize = new ComputeSize(32, 32, 1);
-
         ComputeQueue queue = arena.createQueue();
 
         long start = System.nanoTime();
