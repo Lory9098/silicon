@@ -11,6 +11,8 @@ import java.util.Arrays;
 public class ComputeTest {
     
     private static final int N = 536870912;
+    private static float[] A_HOST = generateData();
+    private static float[] B_HOST = generateData();
     
     public static void main(String[] args) {
         System.err.println("Warning: This test needs a big amount of RAM!");
@@ -40,12 +42,9 @@ public class ComputeTest {
         ComputeModule module = compiler.compileFromResource("vector_add_fp16.slang");
         ComputeFunction function = module.getFunction("add");
         
-        float[] aHost = generateData();
-        float[] bHost = generateData();
-        
         try (ComputeArena arena = context.createArena()) {
-            ComputeBuffer a = arena.allocateHalf(aHost);
-            ComputeBuffer b = arena.allocateHalf(bHost);
+            ComputeBuffer a = arena.allocateHalf(A_HOST);
+            ComputeBuffer b = arena.allocateHalf(B_HOST);
             ComputeBuffer c = arena.allocateBytes((long) N * 2); // half = 2 byte
             
             dispatch(function, arena, a, b, c);
@@ -62,12 +61,9 @@ public class ComputeTest {
         ComputeModule module = compiler.compileFromResource("vector_add_fp32.slang");
         ComputeFunction function = module.getFunction("add");
         
-        float[] aHost = generateData();
-        float[] bHost = generateData();
-        
         try (ComputeArena arena = context.createArena()) {
-            ComputeBuffer a = arena.allocateArray(aHost);
-            ComputeBuffer b = arena.allocateArray(bHost);
+            ComputeBuffer a = arena.allocateArray(A_HOST);
+            ComputeBuffer b = arena.allocateArray(B_HOST);
             ComputeBuffer c = arena.allocateBytes((long) N * 4);
 
             dispatch(function, arena, a, b, c);
