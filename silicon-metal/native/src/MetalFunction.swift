@@ -14,3 +14,11 @@ public func metal_create_function(
 
     return objectToPointer(function)
 }
+
+@_cdecl("metal_max_work_group_size")
+public func metal_max_work_group_size(
+    pipelinePtr: UnsafeMutableRawPointer
+) -> Int32 {
+    let pipeline: MTLComputePipelineState = pointerToObject(pipelinePtr)
+    return Int32(pipeline.maxTotalThreadsPerThreadgroup)
+}

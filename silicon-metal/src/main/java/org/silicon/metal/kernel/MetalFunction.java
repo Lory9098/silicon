@@ -1,11 +1,21 @@
 package org.silicon.metal.kernel;
 
+import org.silicon.SiliconException;
 import org.silicon.kernel.ComputeFunction;
 import org.silicon.metal.MetalObject;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
 
 public final class MetalFunction implements MetalObject, ComputeFunction {
+
+    private static final MethodHandle METAL_MAX_WORK_GROUP_SIZE = MetalObject.find(
+        "metal_max_work_group_size",
+        FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
+    );
 
     private final MemorySegment handle;
     private final MetalPipeline pipeline;
@@ -30,6 +40,10 @@ public final class MetalFunction implements MetalObject, ComputeFunction {
 
     @Override
     public int maxWorkGroupSize() {
-        return 1024; // TODO
+        try {
+            return (int) METAL_MAX_WORK_GROUP_SIZE.invokeExact(pipeline.handle());
+        } catch (Throwable t) {
+            throw new SiliconException("maxWorkGroupSize() failed", t);
+        }
     }
 }
